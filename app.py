@@ -1,4 +1,4 @@
-"""STHO Terminal V3 — mobile-first interface over existing V2 scan snapshots.
+"""STHO Terminal V3.1 — clearer mobile-first cards over V2 scan snapshots.
 
 Keep metrics.py, scan_market.py, workflow and requirements.txt from V2 unchanged.
 """
@@ -63,6 +63,25 @@ st.markdown(
       .stho-kpi {padding: 10px 8px;}
       .stho-grid {gap:7px;}
       .stho-stat {padding:8px 6px;}
+    }
+
+    /* More readable, compact phone cards and transparent failed-rule labeling */
+    .stho-card-meta {color:#8c9bb0;font-size:.69rem;margin-top:5px;}
+    .stho-stats {grid-template-columns:repeat(4,minmax(0,1fr));}
+    .stho-flag {border-top:1px solid #263243;padding-top:9px;margin-top:10px;color:#f5c87c;font-size:.75rem;line-height:1.5;}
+    .stho-success {border-top:1px solid #263243;padding-top:9px;margin-top:10px;color:#72d8b9;font-size:.75rem;line-height:1.5;}
+    .stho-marketline {font-size:.75rem;color:#92a4b8;line-height:1.5;margin:4px 0 12px;}
+    .stho-marketline b {color:#eef5fb;}
+    .stho-intro {font-size:.79rem;color:#9db0c4;margin-top:-4px;margin-bottom:8px;}
+    .stho-stat.negative strong {color:#f5c87c;}
+    @media (max-width:700px) {
+      .stho-stats {grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+      .stho-stat {padding:7px 9px;}
+      .stho-stat strong {font-size:.91rem;}
+      .stho-stat span {font-size:.68rem;}
+      .stho-head {margin-bottom:4px;}
+      .block-container {padding-top:.35rem;}
+      [data-testid="stVerticalBlockBorderWrapper"] {border-radius:14px!important;}
     }
     </style>""",
     unsafe_allow_html=True,
@@ -134,6 +153,30 @@ def esc(text: object) -> str:
     return html.escape(str(text), quote=True)
 
 
+def short_name(raw: object) -> str:
+    """Make exchange-provided legal security descriptions easier to scan on phones."""
+    name = str(raw or "")
+    name = re.sub(r"\s+-\s+(?:(?:Class [A-Z] )?Common Stock|Ordinary Shares)(?:.*)?$", "", name, flags=re.IGNORECASE)
+    name = re.sub(r"\s+(?:Class [A-Z] )?Common Stock(?:.*)?$", "", name, flags=re.IGNORECASE)
+    return name.strip() or str(raw or "—")
+
+
+def failed_conditions(row: dict, rules: dict[str, bool]) -> list[str]:
+    """Report an UNMET target with the actual reading, never a bare 'X > Y'."""
+    descriptions = {
+        "Price > EMA50": "Close below/equal EMA50",
+        "Price > EMA200": "Close below/equal EMA200",
+        "EMA10 > EMA21": "EMA10 below/equal EMA21",
+        "ADR20 > 5%": f"ADR {fmt(row, 'ADR20 (%)', suffix='%')} (target >5%)",
+        "Price > $1": f"Price {fmt(row, 'Close ($)', prefix='$')} (target >$1)",
+        "1M return > 30%": f"1M {fmt(row, '1M (%)', suffix='%')} (target >30%)",
+        "3M return > 30%": f"3M {fmt(row, '3M (%)', suffix='%')} (target >30%)",
+        "6M return > 30%": f"6M {fmt(row, '6M (%)', suffix='%')} (target >30%)",
+        "ADV60 > $100M": f"ADV {fmt(row, 'ADV60 ($M)', suffix='M', prefix='$')} (target >$100M)",
+    }
+    return [descriptions.get(name, name) for name in RULE_LABELS if rules.get(name) is False]
+
+
 def small_kpis(pairs: list[tuple[str, str]]) -> None:
     contents = "".join(
         f'<div class="stho-kpi"><div class="stho-num">{esc(value)}</div><div class="stho-label">{esc(label)}</div></div>'
@@ -154,29 +197,36 @@ def stock_card(row: dict, uid: str) -> None:
     sym = str(row.get("Ticker", "—"))
     score = score_of(row)
     rules = rules_for(row)
-    failed = [k for k, value in rules.items() if not value]
-    adv = row.get("ADV60 ($M)", 0)
+    failed = failed_conditions(row, rules)
     try:
-        liquid = float(adv) >= 100
+        liquid = float(row.get("ADV60 ($M)", 0)) >= 100
     except (TypeError, ValueError):
         liquid = False
-    name = str(row.get("Name", sym))
-    if len(name) > 58:
-        name = name[:55].rstrip() + "…"
-    summary = ("All nine momentum checks passed" if score == 9 else
-               "; ".join(failed[:2]) if failed else "Open analysis for rule details")
-    risk = " · Below $100M daily liquidity" if not liquid else ""
+    name = short_name(row.get("Name", sym))
+    if len(name) > 49:
+        name = name[:46].rstrip() + "…"
+    if rules and not failed:
+        note = '<div class="stho-success">✓ All 9 momentum rules passed</div>'
+    elif failed:
+        labels = " · ".join(failed[:2])
+        note = f'<div class="stho-flag"><strong>NOT MET:</strong> {esc(labels)}</div>'
+    else:
+        note = '<div class="stho-flag">Rule details unavailable — open Deep Dive to recheck</div>'
+    if not liquid and not any("ADV " in reason for reason in failed):
+        note += '<div class="stho-flag">⚠ Below $100M average daily dollar volume</div>'
     content = f'''<div class="stho-stock-head">
-      <div><div class="stho-ticker">{esc(sym)}</div><div class="stho-company">{esc(name)}</div></div>
+      <div><div class="stho-ticker">{esc(sym)}</div><div class="stho-company">{esc(name)}</div>
+      <div class="stho-card-meta">Close date {esc(row.get('Date', '—'))}</div></div>
       <div class="stho-score{'' if score >= 7 else ' low'}">{score if score >= 0 else '—'}/9<small>Momentum</small></div>
     </div><div class="stho-stats">
       <div class="stho-stat"><strong>{esc(fmt(row, 'Close ($)', prefix='$'))}</strong><span>Last close</span></div>
       <div class="stho-stat"><strong>{esc(fmt(row, '1M (%)', suffix='%'))}</strong><span>1M return</span></div>
+      <div class="stho-stat"><strong>{esc(fmt(row, 'ADR20 (%)', suffix='%'))}</strong><span>ADR20</span></div>
       <div class="stho-stat"><strong>{esc(fmt(row, 'ADV60 ($M)', suffix='M', prefix='$'))}</strong><span>ADV60</span></div>
-    </div><div class="stho-note">{esc(summary + risk)}</div>'''
+    </div>{note}'''
     with st.container(border=True):
         st.markdown(content, unsafe_allow_html=True)
-        st.button("View analysis  ↗", key=f"card_{uid}_{sym}", on_click=set_details,
+        st.button("Deep Dive  ↗", key=f"card_{uid}_{sym}", on_click=set_details,
                   args=(sym, row), use_container_width=True)
 
 
@@ -192,17 +242,22 @@ def get_market() -> tuple[pd.DataFrame, dict] | None:
 
 
 def discover(market: tuple[pd.DataFrame, dict] | None) -> None:
-    st.markdown('<div class="stho-section">Market overview</div>', unsafe_allow_html=True)
     if market is None:
         return
     frame, state = market
     total = int(state.get("universe_count", 0))
     count = int(state.get("ever_scanned", len(frame)))
     recent = int(frame["Recent"].sum())
-    small_kpis([("Universe", f"{total:,}"), ("Ever scanned", f"{count:,}"), ("Recent rows", f"{recent:,}")])
     coverage = 100 * count / total if total else 0
-    st.caption(f"Coverage {coverage:.1f}% · Partial US market scan · Last run {str(state.get('last_run_utc', 'unknown'))[:16]} UTC")
-    st.progress(min(1.0, count / total) if total else 0.0)
+    st.markdown(
+        f'<div class="stho-marketline"><b>{recent:,} recent rows</b> · {count:,}/{total:,} ever scanned · {coverage:.1f}% historical coverage</div>',
+        unsafe_allow_html=True,
+    )
+    with st.expander("Coverage & data status"):
+        small_kpis([("Universe", f"{total:,}"), ("Ever scanned", f"{count:,}"), ("Recent rows", f"{recent:,}")])
+        st.progress(min(1.0, count / total) if total else 0.0)
+        st.caption(f"Last run {str(state.get('last_run_utc', 'unknown'))[:16]} UTC · Partial US market scan")
+        st.caption("Coverage counts historically checked symbols; it does not mean all stocks are current.")
 
     st.markdown('<div class="stho-section">Discover candidates</div>', unsafe_allow_html=True)
     category = st.radio("Momentum category", RANKS, horizontal=True, label_visibility="collapsed", key="rank_filter")
@@ -374,12 +429,13 @@ def about() -> None:
 
 
 st.markdown('''<div class="stho-head"><div><div class="stho-logo">STHO<span>•</span>Terminal</div>
-    <div class="stho-sub">US momentum · Clean signals, deeper research</div></div>
+    <div class="stho-sub">US momentum · Signal first, details on demand</div></div>
     <div class="stho-pill">EOD · Research</div></div>''', unsafe_allow_html=True)
 st.session_state.setdefault("nav_radio", "Discover")
+st.session_state.setdefault("rank_filter", "7–8/9")
 st.session_state.setdefault("detail_row", None)
 st.session_state.setdefault("chart_symbol", "")
-page = st.radio("Navigation", NAV, horizontal=True, key="nav_radio", label_visibility="collapsed")
+page = st.selectbox("Navigate", NAV, key="nav_radio", label_visibility="collapsed")
 market = get_market() if page in ("Discover", "Deep Dive") else None
 if page == "Discover":
     discover(market)
@@ -391,4 +447,4 @@ else:
     about()
 
 st.divider()
-st.caption("STHO Terminal V3 · Daily completed candles · Research only · Not financial advice")
+st.caption("STHO Terminal V3.1 · Daily completed candles · Research only · Not financial advice")
