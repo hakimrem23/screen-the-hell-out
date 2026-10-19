@@ -1,0 +1,23 @@
+{
+  "last_run_utc": "2026-10-19T21:33:49+00:00",
+  "universe_count": 5903,
+  "ever_scanned": 140,
+  "batch_requested": 150,
+  "batch_succeeded": 140,
+  "batch_failed": 10,
+  "cursor": 138,
+  "source_status": "NASDAQ Trader symbol lists; equity exclusion is best effort",
+  "failed_examples": [
+    "GCGR: Insufficient valid daily candles (need at least 201)",
+    "EMAT: Insufficient valid daily candles (need at least 201)",
+    "CTY: Insufficient valid daily candles (need at least 201)",
+    "VCRE: Insufficient valid daily candles (need at least 201)",
+    "ELMT: Insufficient valid daily candles (need at least 201)",
+    "NXDR: Insufficient valid daily candles (need at least 201)",
+    "AKTS: Insufficient valid daily candles (need at least 201)",
+    "SNSC: Insufficient valid daily candles (need at least 201)",
+    "WQEY: Insufficient valid daily candles (need at least 201)",
+    "CEPL: Insufficient valid daily candles (need at least 201)"
+  ],
+  "note": "Progressive partial coverage; old rows can be stale. Yahoo data unofficial."
+}
