@@ -1,0 +1,41 @@
+name: US Market Momentum Scan
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 03:23 UTC Tue-Sat = after each Mon-Fri US session, including DST.
+    - cron: '23 3 * * 2-6'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: us-market-momentum-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@v4
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Scan rotating subset of listed equities
+        env:
+          MARKET_BATCH_SIZE: '150'
+        run: python scan_market.py
+      - name: Save scan snapshots back to repository
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/market_results.csv data/scan_status.json data/universe.csv
+          if ! git diff --cached --quiet; then
+            git commit -m 'data: update progressive US market scan'
+            git push
+          fi
