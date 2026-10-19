@@ -3,7 +3,6 @@ name: US Market Momentum Scan
 on:
   workflow_dispatch:
   schedule:
-    # 03:23 UTC Tue-Sat = after each Mon-Fri US session, including DST.
     - cron: '23 3 * * 2-6'
 
 permissions:
@@ -31,4 +30,11 @@ jobs:
           MARKET_BATCH_SIZE: '150'
         run: python scan_market.py
       - name: Save scan snapshots back to repository
-        run: git config user.name "github-actions[bot]" && git config user.email "41898282+github-actions[bot]@users.noreply.github.com" && git add data/market_results.csv data/scan_status.json data/universe.csv && (git diff --cached --quiet || (git commit -m update-market-scan && git push))
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/market_results.csv data/scan_status.json data/universe.csv
+          if ! git diff --cached --quiet; then
+            git commit -m "data: update progressive US market scan"
+            git push
+          fi
