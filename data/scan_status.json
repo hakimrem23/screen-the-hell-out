@@ -1,18 +1,26 @@
 {
-  "last_run_utc": "2026-10-20T03:56:11+00:00",
+  "last_run_utc": "2026-10-20T04:39:07+00:00",
   "universe_count": 5903,
-  "ever_scanned": 273,
+  "ever_scanned": 396,
   "batch_requested": 150,
-  "batch_succeeded": 145,
-  "batch_failed": 5,
-  "cursor": 276,
+  "batch_succeeded": 135,
+  "batch_failed": 15,
+  "cursor": 414,
   "source_status": "NASDAQ Trader symbol lists; equity exclusion is best effort",
   "failed_examples": [
-    "LCLN: Insufficient valid daily candles (need at least 201)",
-    "LPCV: Insufficient valid daily candles (need at least 201)",
-    "TCGX: Insufficient valid daily candles (need at least 201)",
-    "RNA: Insufficient valid daily candles (need at least 201)",
-    "SPTX: Insufficient valid daily candles (need at least 201)"
+    "STDN: Insufficient valid daily candles (need at least 201)",
+    "LIFE: Insufficient valid daily candles (need at least 201)",
+    "SECZ: Insufficient valid daily candles (need at least 201)",
+    "TPTS: Insufficient valid daily candles (need at least 201)",
+    "SCAT: Insufficient valid daily candles (need at least 201)",
+    "FTRA: Insufficient valid daily candles (need at least 201)",
+    "LTGO: Insufficient valid daily candles (need at least 201)",
+    "IGAC: Need at least 240 completed daily candles",
+    "WLTH: Need at least 240 completed daily candles",
+    "SWMR: Insufficient valid daily candles (need at least 201)",
+    "RTSN: Insufficient valid daily candles (need at least 201)",
+    "INIO: Insufficient valid daily candles (need at least 201)"
   ],
-  "note": "Progressive partial coverage; old rows can be stale. Yahoo data unofficial."
+  "note": "Progressive partial coverage; old rows can be stale. Yahoo data unofficial. Shariah status is NEVER inferred by the scanner.",
+  "strategy": "STHO_V4_EARLY_REVERSAL_RESEARCH"
 }
