@@ -1,4 +1,4 @@
-"""STHO V4 Early Reversal Swing — research dashboard for phones.
+"""STHO V4.1 Early Reversal Swing — transparent research triage for phones.
 
 Shariah gate is based ONLY on manually supplied dated, source-linked records.
 There are NO pre-approved securities and NO automated religious determination.
@@ -17,6 +17,7 @@ import yfinance as yf
 from reversal import analyze_reversal
 from metrics import screen_ticker
 from shariah_gate import read_reviews, review_status, COLUMNS, MAX_AGE_DAYS
+from triage import CATEGORIES, classify, technical_reasons, ready
 
 ROOT = Path(__file__).resolve().parent
 RESULTS_FILE = ROOT / "data/market_results.csv"
@@ -26,7 +27,7 @@ DEFAULT_WATCH = "MU, MRVL, BMRN, NVDA, PLTR"
 PAGES = ["Discover", "My Watchlist", "Deep Dive", "Shariah Reviews", "About"]
 STAGES = ["Breakout review", "Reversal watch", "Extended", "All setups"]
 
-st.set_page_config(page_title="STHO | Early Reversal V4", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="STHO | Early Reversal V4.1", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
 st.markdown('''<style>
 .stApp {background:#0b111b;color:#e9f2f8;}
 .block-container {max-width:950px;padding-top:.35rem;padding-bottom:2.8rem;}
@@ -144,20 +145,33 @@ def set_detail(row: dict):
 def card(row: dict, reg: dict, key: str):
     sym = str(row.get("Ticker", ""))
     gate = review_status(sym, reg)
+    bucket = classify(row, gate)
     stage = str(row.get("Reversal Stage") or "No setup")
     name = re.sub(r"\s+-\s+(?:Class [A-Z] )?Common Stock.*$", "", str(row.get("Name", sym)), flags=re.I)[:64]
-    tag_class = "stho-ok" if gate["gate"] == "MANUALLY_REVIEWED" else "stho-warn"
+    score = number(row.get("Reversal Score"), 0)
+    blocked = gate["gate"] == "BLOCKED"
+    if bucket == "Shariah-cleared Review (manual record)":
+        status = "Manual AAOIFI source review recorded · not independently certified"
+        color = "stho-ok"
+    elif blocked:
+        status = "BLOCKED by reported source status · do not shortlist"
+        color = "stho-warn"
+    else:
+        status = "RESEARCH ONLY · no recorded Syariah clearance"
+        color = "stho-warn"
+    fails = technical_reasons(row)
+    preview = " · ".join(fails[:2]) if fails else "All numerical technical checks recorded as met; verify earnings and live prices"
     details = f'''<div class="stho-card"><div><div class="stho-ticker">{esc(sym)}</div><div class="stho-name">{esc(name)}</div></div>
-      <div class="stho-stage">{esc(stage)}<div class="stho-muted">{esc(number(row.get('Reversal Score'),0))}/10 signals</div></div></div>
+      <div class="stho-stage">{esc(score)}/10<div class="stho-muted">{esc(stage)}</div></div></div>
     <div class="stho-statgrid">
-      <div class="stho-stat"><b>{esc(number(row.get('Close ($)'),prefix='$'))}</b><span>Close</span></div>
+      <div class="stho-stat"><b>{esc(number(row.get('Close ($)'),prefix='$'))}</b><span>Last close</span></div>
       <div class="stho-stat"><b>{esc(number(row.get('RVOL20'),suffix='×'))}</b><span>RVOL</span></div>
       <div class="stho-stat"><b>{esc(number(row.get('RR Proxy'),suffix='×'))}</b><span>R:R proxy</span></div>
       <div class="stho-stat"><b>{esc(number(row.get('ADV60 ($M)'),prefix='$',suffix='M'))}</b><span>ADV60</span></div>
-    </div><div class="{tag_class}">{esc(review_label(gate))} · {esc(gate['why'])}</div>'''
+    </div><div class="{color}">{esc(status)}</div><div class="stho-muted">{esc(preview)}</div>'''
     with st.container(border=True):
         st.markdown(details, unsafe_allow_html=True)
-        st.button("Open Deep Dive ↗", key=f"open_{key}_{sym}", on_click=set_detail, args=(row,), use_container_width=True)
+        st.button("View checks & chart ↗", key=f"open_{key}_{sym}", on_click=set_detail, args=(row,), use_container_width=True)
 
 
 def kpis(items):
@@ -172,51 +186,47 @@ def discover(reg: dict):
     df, state = result
     total = int(state.get("universe_count", 0))
     n = int(state.get("ever_scanned", len(df)))
-    valid_technical = df["Reversal Stage"].isin(["Reversal watch", "Breakout review", "Extended"]) & df["Recent"]
-    screened = df[valid_technical].copy()
-    gate_map = {t: review_status(t, reg) for t in screened["Ticker"].astype(str).unique()}
-    screened["Shariah Gate"] = screened["Ticker"].map(lambda t: gate_map[str(t)]["gate"])
-    manually = screened[screened["Shariah Gate"] == "MANUALLY_REVIEWED"]
-    kpis([("Historical coverage", f"{n}/{total}"), ("Recent technical setups", str(len(screened))),
-          ("Manual source reviewed", str(len(manually)))])
-    st.caption(f"Batch run {str(state.get('last_run_utc', '—'))[:16]} UTC · Scans rotate; not a full-market daily feed")
-    with st.expander("Coverage, scan quality & limitations"):
+    active = df[df["Reversal Stage"].isin(["Reversal watch", "Breakout review", "Extended"])].copy()
+    active["Bucket"] = active.apply(lambda row: classify(row.to_dict(), review_status(str(row["Ticker"]), reg)), axis=1)
+    recent_count = int(active["Recent"].sum()) if "Recent" in active else 0
+    cleared = int((active["Bucket"] == "Shariah-cleared Review (manual record)").sum())
+    kpis([("Universe ever covered", f"{n}/{total}"), ("Recent patterns", str(recent_count)),
+          ("Manual-review shortlist", str(cleared))])
+    with st.expander("Market coverage & data freshness"):
         st.progress(min(n / total, 1.) if total else 0.)
-        st.write(f"{(100*n/total if total else 0):.1f}% ever scanned; stale history is not included in fresh shortlist.")
-        st.caption(f"Latest batch: {state.get('batch_succeeded','—')}/{state.get('batch_requested','—')} successfully scored; {state.get('batch_failed','—')} failures")
-        st.caption("No earnings-calendar check; confirm earnings and broker prices independently before any trade.")
+        st.caption(f"{(100*n/total if total else 0):.1f}% ever scanned. Only rows passing freshness checks can be technically ready.")
+        st.caption(f"Latest run: {state.get('last_run_utc', '—')} · Batch {state.get('batch_succeeded', '—')}/{state.get('batch_requested', '—')} processed")
+        st.warning("This is not whole-market, realtime or earnings-aware. Source reports are user-entered, not independently validated.")
     st.subheader("Early Reversal Discover")
-    st.caption("Default: only tickers with valid MANUALLY RECORDED evidence. The app never verifies a source report for you.")
-    include_uncleared = st.checkbox("Show research-only (Shariah not cleared)", value=False,
-                                    help="Shows unverified, expired or blocked as research; these are NOT buy candidates.")
-    stage = st.selectbox("Setup", STAGES, index=0)
-    only_recent = st.checkbox("Recent bars only", value=True)
-    with st.expander("Additional filters"):
-        min_rvol = st.slider("Min relative volume", 0.0, 4.0, 0.0, step=.25)
-        limit = st.slider("Maximum cards", 3, 40, 12, step=1)
-    selected = df.copy()
-    if only_recent:
-        selected = selected[selected["Recent"]]
-    if stage == "All setups":
-        selected = selected[selected["Reversal Stage"].isin(["Breakout review", "Reversal watch", "Extended"])]
+    st.caption("Technical research and manually source-reviewed candidates are deliberately separate.")
+    selected_tab = st.selectbox("Candidate category", CATEGORIES, key="bucket_view")
+    candidates = active[active["Bucket"] == selected_tab].copy()
+    if selected_tab == "Research Watch":
+        st.info("Watch only: early reversal patterns, but breakout/volume/R:R may not qualify. Securities here are NOT buy signals.")
+    elif selected_tab == "Technically Ready · Syariah Pending":
+        st.warning("Technical breakout checks passed, but Shariah review is missing or expired. NOT a buy shortlist.")
+    elif selected_tab == "Shariah-cleared Review (manual record)":
+        st.warning("Manual source review recorded ≠ independent Shariah certification. Confirm the actual report, latest earnings, spreads and risk before any trade.")
     else:
-        selected = selected[selected["Reversal Stage"] == stage]
-    selected = selected[pd.to_numeric(selected["RVOL20"], errors="coerce") >= min_rvol]
-    selected["Shariah Gate"] = selected["Ticker"].map(lambda t: review_status(t, reg)["gate"])
-    if not include_uncleared:
-        selected = selected[selected["Shariah Gate"] == "MANUALLY_REVIEWED"]
-    selected = selected.sort_values(["Reversal Score", "RVOL20"], ascending=False, na_position="last")
-    st.caption(f"{len(selected)} result(s) from available data · Not live trade alerts")
-    if not include_uncleared and selected.empty:
-        st.info("No manually cleared matches. This is EXPECTED if data/shariah_reviews.csv is empty. Open Shariah Reviews for the manual evidence checklist.")
-        st.caption(f"Technically interesting fresh rows in scanned subset: {len(screened)} (not Shariah-cleared).")
-    elif selected.empty:
-        st.info("No matches with current filters or data coverage. Try All setups.")
-    for idx, row in enumerate(selected.head(limit).to_dict("records")):
-        card(row, reg, f"discover_{idx}")
-    with st.expander("Technical results table (not a Shariah certification)"):
-        cols = ["Ticker", "Reversal Stage", "Shariah Gate", "Reversal Score", "RVOL20", "Close ($)", "RR Proxy", "Date", "Recent"]
-        st.dataframe(selected[[c for c in cols if c in selected.columns]], hide_index=True, use_container_width=True)
+        st.warning("Excluded due to a reported Shariah blocking status, stale data or an extended chart. Unrated/questionable does NOT automatically mean non-compliant.")
+    with st.expander("Filters & scan details"):
+        min_rvol = st.slider("Minimum RVOL", 0., 4., 0., .25)
+        card_limit = st.slider("Maximum cards", 3, 40, 12)
+        show_stale = st.checkbox("Include stale research rows", value=False, help="Stale rows are never classified as technically ready")
+    if not show_stale and selected_tab != "Rejected / Blocked":
+        candidates = candidates[candidates["Recent"]]
+    candidates = candidates[pd.to_numeric(candidates["RVOL20"], errors="coerce") >= min_rvol]
+    candidates = candidates.sort_values(["Reversal Score", "RVOL20"], ascending=False, na_position="last")
+    st.caption(f"{len(candidates)} candidates in this category · From partially scanned market only")
+    if candidates.empty:
+        st.info("No matches here from the scanned subset. This can be expected, especially before manual Syariah reviews are recorded.")
+        if selected_tab == "Shariah-cleared Review (manual record)":
+            st.caption("Open Shariah Reviews for instructions. Never fabricate COMPLIANT status to fill this list.")
+    for i, row in enumerate(candidates.head(card_limit).to_dict("records")):
+        card(row, reg, f"discover_{i}")
+    with st.expander("Auditable technical results"):
+        cols = ["Ticker", "Bucket", "Reversal Stage", "Reversal Score", "RVOL20", "RR Proxy", "ADV60 ($M)", "Date", "Recent"]
+        st.dataframe(candidates[[c for c in cols if c in candidates.columns]], hide_index=True, use_container_width=True)
 
 
 def on_demand(reg: dict):
@@ -272,12 +282,21 @@ def deep_dive(reg: dict):
     sym = str(row["Ticker"])
     gate = review_status(sym, reg)
     st.markdown(f"### {esc(sym)} · {esc(row.get('Reversal Stage', 'Unknown'))}")
+    bucket = classify(row, gate)
+    st.info(f"Triage: {bucket} · Technical Stage: {row.get('Reversal Stage', '—')}")
     if gate["gate"] != "MANUALLY_REVIEWED":
         st.error(f"NOT SHARIAH-CLEARED. {gate['why']}. Technical research only; not eligible for buy shortlist.")
     else:
-        st.success(f"Manual source review recorded, AAOIFI; checked within {MAX_AGE_DAYS} days. Status NOT independently verified by this app.")
+        st.success(f"Manual AAOIFI source review recorded within {MAX_AGE_DAYS} days; NOT independently validated. Technical readiness: {'met' if ready(row) else 'not met'}.")
         if gate.get("evidence"):
             st.link_button("Open manually cited source", gate["evidence"])
+    reasons = technical_reasons(row)
+    if reasons:
+        with st.expander(f"Why not technically ready ({len(reasons)} issues)", expanded=True):
+            for reason in reasons:
+                st.write("• " + reason)
+    else:
+        st.caption("All recorded numeric technical checks passed. This is not a buy recommendation.")
     kpis([("Close", number(row.get("Close ($)"),prefix="$")), ("RVOL20", number(row.get("RVOL20"),suffix="×")),
           ("Reference R:R", number(row.get("RR Proxy"),suffix="×"))])
     st.caption(f"Daily bar {row.get('Date','—')} · Pivot {number(row.get('Pivot ($)'),prefix='$')} · Stop reference {number(row.get('Stop Ref ($)'),prefix='$')} · Overhead reference {number(row.get('Target Ref ($)'),prefix='$')}")
@@ -330,17 +349,17 @@ def shariah_reviews(reg: dict):
 
 
 def about():
-    st.subheader("STHO V4 — Early Reversal Swing")
+    st.subheader("STHO V4.1 — Early Reversal Swing")
     st.write("**Aim:** locate recent downtrend-to-base / EMA reclaim / volume breakout patterns that may warrant further research for a 1–2-week swing. No guaranteed price predictions.")
-    st.write("**Technical stages:** Reversal watch, Breakout review, Extended, No setup. Breakout review includes risk/reward proxy >=2 and basic liquidity gates. Exact thresholds are experimental, not optimized.")
+    st.write("**Candidate categories:** Research Watch; Technically Ready (Shariah pending); Shariah-cleared Review (manual report only); Rejected/Blocked. The chart stage and Shariah gate remain separate; no purely technical score means buy.")
     st.write("**Shariah default:** no stock passed. Only manual AAOIFI reviews with business/financial PASS, report-specific HTTPS source, reviewer and recent date enter the shortlist. The app does not verify external report content.")
     st.write("**Data:** progressive US universe via Nasdaq Trader symbols, unofficial Yahoo Finance historical EOD pricing, rotated GitHub Actions. Does not check earnings, company announcements, corporate actions beyond data feed, or compliance changes.")
-    st.write("**V4 migration:** replace app.py and scan_market.py; add reversal.py, shariah_gate.py and data/shariah_reviews.csv. Keep metrics.py, requirements.txt, workflow and theme. Trigger a NEW scan to calculate reversal fields.")
+    st.write("**V4.1 migration:** replace app.py and add triage.py only. Keep all V4 scanner, data, theme and GitHub Actions unchanged; no new run required to change the UI.")
 
 
 st.markdown('''<div class="stho-head"><div><div class="stho-brand">STHO<span>•</span>Reversal</div>
 <div class="stho-sub">Shariah-first · Early reversal · 1–2 week research</div></div>
-<div class="stho-chip">V4 · EOD</div></div>''', unsafe_allow_html=True)
+<div class="stho-chip">V4.1 · EOD</div></div>''', unsafe_allow_html=True)
 st.session_state.setdefault("page", "Discover")
 st.session_state.setdefault("detail_row", None)
 st.session_state.setdefault("chart_symbol", "")
@@ -357,4 +376,4 @@ elif page == "Shariah Reviews":
 else:
     about()
 st.divider()
-st.caption("STHO V4 · Research-only EOD snapshots · Manual evidence ≠ independent Shariah certification · Not investment advice")
+st.caption("STHO V4.1 · Research-only EOD snapshots · Manual evidence ≠ independent Shariah certification · Not investment advice")
