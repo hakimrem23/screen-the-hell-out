@@ -19,6 +19,7 @@ import pandas as pd
 import yfinance as yf
 
 from metrics import screen_ticker
+from reversal import analyze_reversal
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 RESULTS_FILE = DATA_DIR / "market_results.csv"
@@ -36,6 +37,9 @@ RESULT_COLUMNS = [
     "Ticker", "Name", "Exchange", "Date", "Close ($)", "Score", "Category",
     "ADR20 (%)", "1M (%)", "3M (%)", "6M (%)", "ADV60 ($M)",
     "Rules JSON", "Scanned at UTC",
+    "Reversal Stage", "Reversal Score", "Below EMA200 Days (60)", "RVOL20",
+    "Pivot ($)", "Stop Ref ($)", "Target Ref ($)", "RR Proxy",
+    "Pivot Extension (%)", "EMA200 Gap (%)", "Reversal Checks JSON",
 ]
 BAD_NAMES = re.compile(
     r"\b(?:warrants?|rights?|units?|preferred|preference|senior notes?|subordinated notes?|"
@@ -171,6 +175,9 @@ def run() -> dict:
             if frame is None:
                 raise ValueError("No valid historical candles")
             res = screen_ticker(ticker, frame)
+            reversal = analyze_reversal(ticker, frame)
+            res.update({k: v for k, v in reversal.items() if k != "Reversal Checks"})
+            res["Reversal Checks JSON"] = json.dumps(reversal["Reversal Checks"], separators=(",", ":"))
             res["Name"] = info[ticker]["Name"]
             res["Exchange"] = info[ticker]["Exchange"]
             res["Rules JSON"] = json.dumps(res.pop("Rule details"), separators=(",", ":"))
@@ -193,7 +200,8 @@ def run() -> dict:
         "cursor": next_position,
         "source_status": source_status,
         "failed_examples": failures[:12],
-        "note": "Progressive partial coverage; old rows can be stale. Yahoo data unofficial.",
+        "note": "Progressive partial coverage; old rows can be stale. Yahoo data unofficial. Shariah status is NEVER inferred by the scanner.",
+        "strategy": "STHO_V4_EARLY_REVERSAL_RESEARCH",
     }
     STATUS_FILE.write_text(json.dumps(status, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(status, indent=2))

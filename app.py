@@ -1,6 +1,7 @@
-"""STHO Terminal V3.1 — clearer mobile-first cards over V2 scan snapshots.
+"""STHO V4 Early Reversal Swing — research dashboard for phones.
 
-Keep metrics.py, scan_market.py, workflow and requirements.txt from V2 unchanged.
+Shariah gate is based ONLY on manually supplied dated, source-linked records.
+There are NO pre-approved securities and NO automated religious determination.
 """
 from __future__ import annotations
 
@@ -13,438 +14,347 @@ import pandas as pd
 import streamlit as st
 import yfinance as yf
 
-from metrics import RULE_LABELS, screen_ticker
+from reversal import analyze_reversal
+from metrics import screen_ticker
+from shariah_gate import read_reviews, review_status, COLUMNS, MAX_AGE_DAYS
 
 ROOT = Path(__file__).resolve().parent
-RESULTS_FILE = ROOT / "data" / "market_results.csv"
-STATUS_FILE = ROOT / "data" / "scan_status.json"
-DEFAULT_TICKERS = "NVDA, MRVL, MU, BMRN, AVGO, AMD, CLSK, SOFI, RKLB, TSLA, AMZN, PLTR"
-NAV = ["Discover", "My Watchlist", "Deep Dive", "About"]
-RANKS = ["All", "9/9", "7–8/9", "6/9"]
-METRIC_FIELDS = ["Score", "Close ($)", "ADR20 (%)", "1M (%)", "3M (%)", "6M (%)", "ADV60 ($M)"]
+RESULTS_FILE = ROOT / "data/market_results.csv"
+STATUS_FILE = ROOT / "data/scan_status.json"
+SHARIAH_FILE = ROOT / "data/shariah_reviews.csv"
+DEFAULT_WATCH = "MU, MRVL, BMRN, NVDA, PLTR"
+PAGES = ["Discover", "My Watchlist", "Deep Dive", "Shariah Reviews", "About"]
+STAGES = ["Breakout review", "Reversal watch", "Extended", "All setups"]
 
-st.set_page_config(page_title="STHO Terminal", page_icon="📊", layout="wide", initial_sidebar_state="collapsed")
-st.markdown(
-    """<style>
-    .block-container {max-width: 1120px; padding-top: 0.8rem; padding-bottom: 2.4rem;}
-    h1,h2,h3 {letter-spacing: -.035em;}
-    [data-testid="stHeader"] {background: transparent;}
-    [data-testid="stSidebar"] {background: #111925;}
-    .stApp {background: #0b111b;}
-    .stButton > button[kind="primary"] {background: #1ba88f; color: #031814; border: none;}
-    .stButton > button {border-radius: 12px; min-height: 2.6rem;}
-    [data-testid="stVerticalBlockBorderWrapper"] {border-color: #263344 !important; border-radius: 16px !important;}
-    div[data-testid="stAlert"] {border-radius: 12px;}
-    .stho-head {display:flex; align-items:center; justify-content:space-between; margin: 0 0 12px; gap:10px;}
-    .stho-logo {color: #f0f5fb; font-size: 1.45rem; font-weight: 780; letter-spacing: -.06em;}
-    .stho-logo span {color: #54dbbe;}
-    .stho-sub {color: #8d9db0; font-size: .79rem; margin-top: -3px;}
-    .stho-pill {color:#7be0c7; background:#14352f; border:1px solid #275748; border-radius:999px; padding:5px 10px; font-size:.72rem; white-space:nowrap;}
-    .stho-grid {display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; margin:12px 0 16px;}
-    .stho-kpi {background:#141e2b;border:1px solid #243144;border-radius:14px;padding:13px 10px;min-width:0;}
-    .stho-num {font-size: clamp(1.15rem,3.8vw,1.85rem);font-weight:750;color:#edf5fb;line-height:1.25;}
-    .stho-label {color:#8797ac;font-size:.72rem;margin-top:6px;}
-    .stho-stock-head {display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
-    .stho-ticker {font-size:1.17rem;font-weight:750;color:#f1f6ff;letter-spacing:-.02em;}
-    .stho-company {color:#8999ad;font-size:.78rem;line-height:1.4;margin-top:2px;}
-    .stho-score {font-size:1.22rem;font-weight:750;color:#6ce0c5;text-align:right;white-space:nowrap;}
-    .stho-score.low {color:#c7d0db;}
-    .stho-score small {display:block;font-weight:400;font-size:.66rem;color:#8b9bb0;}
-    .stho-stats {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:12px 0 5px;}
-    .stho-stat {padding:9px;background:#0e1621;border-radius:9px;min-width:0;}
-    .stho-stat strong {display:block;font-size:.86rem;color:#eaf3fa;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .stho-stat span {font-size:.68rem;color:#8294a9;}
-    .stho-note {color:#99a9ba;font-size:.78rem;line-height:1.5;margin-top:6px;}
-    .stho-section {font-size:1.08rem;color:#eaf1fa;font-weight:730;margin:14px 0 8px;}
-    .stho-empty {padding:23px 14px;border:1px dashed #334356;border-radius:14px;color:#acbbcd;text-align:center;}
-    @media (max-width: 700px) {
-      .block-container {padding-left: 1rem; padding-right: 1rem; padding-top: .6rem;}
-      .stho-logo {font-size: 1.32rem;}
-      .stho-kpi {padding: 10px 8px;}
-      .stho-grid {gap:7px;}
-      .stho-stat {padding:8px 6px;}
-    }
-
-    /* More readable, compact phone cards and transparent failed-rule labeling */
-    .stho-card-meta {color:#8c9bb0;font-size:.69rem;margin-top:5px;}
-    .stho-stats {grid-template-columns:repeat(4,minmax(0,1fr));}
-    .stho-flag {border-top:1px solid #263243;padding-top:9px;margin-top:10px;color:#f5c87c;font-size:.75rem;line-height:1.5;}
-    .stho-success {border-top:1px solid #263243;padding-top:9px;margin-top:10px;color:#72d8b9;font-size:.75rem;line-height:1.5;}
-    .stho-marketline {font-size:.75rem;color:#92a4b8;line-height:1.5;margin:4px 0 12px;}
-    .stho-marketline b {color:#eef5fb;}
-    .stho-intro {font-size:.79rem;color:#9db0c4;margin-top:-4px;margin-bottom:8px;}
-    .stho-stat.negative strong {color:#f5c87c;}
-    @media (max-width:700px) {
-      .stho-stats {grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
-      .stho-stat {padding:7px 9px;}
-      .stho-stat strong {font-size:.91rem;}
-      .stho-stat span {font-size:.68rem;}
-      .stho-head {margin-bottom:4px;}
-      .block-container {padding-top:.35rem;}
-      [data-testid="stVerticalBlockBorderWrapper"] {border-radius:14px!important;}
-    }
-    </style>""",
-    unsafe_allow_html=True,
-)
+st.set_page_config(page_title="STHO | Early Reversal V4", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
+st.markdown('''<style>
+.stApp {background:#0b111b;color:#e9f2f8;}
+.block-container {max-width:950px;padding-top:.35rem;padding-bottom:2.8rem;}
+h1,h2,h3 {letter-spacing:-.025em;}
+[data-testid="stHeader"] {background:transparent;}
+.stButton>button {min-height:2.45rem;border-radius:12px;}
+[data-testid="stVerticalBlockBorderWrapper"] {border-radius:16px!important;border-color:#263344!important;}
+.stho-head {display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;}
+.stho-brand {font-weight:800;font-size:1.35rem;color:#f3f6fc;letter-spacing:-.05em;}
+.stho-brand span {color:#54ddbf;}
+.stho-sub {font-size:.76rem;color:#95a5b8;}
+.stho-chip {color:#72d8bb;font-size:.69rem;border:1px solid #23483f;background:#13342e;border-radius:50px;padding:5px 8px;white-space:nowrap;}
+.stho-kpis {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:8px 0 14px;}
+.stho-kpi {background:#141e2b;border:1px solid #263444;padding:11px 8px;border-radius:12px;}
+.stho-kpi strong {display:block;font-size:1.25rem;line-height:1.25;color:#eff7ff;}
+.stho-kpi span {display:block;font-size:.68rem;color:#9aabc0;margin-top:4px;}
+.stho-card {display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.stho-ticker {font-size:1.2rem;font-weight:800;color:#f7f9ff;}
+.stho-name {font-size:.73rem;color:#94a7ba;line-height:1.4;}
+.stho-stage {font-size:.82rem;font-weight:750;color:#69dec2;text-align:right;max-width:45%;}
+.stho-statgrid {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:11px 0;}
+.stho-stat {background:#101927;border-radius:9px;padding:8px;min-width:0;}
+.stho-stat b {display:block;color:#eaf4fb;font-size:.91rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stho-stat span {font-size:.69rem;color:#9aaabe;}
+.stho-warn {font-size:.77rem;color:#f0c982;padding-top:6px;line-height:1.6;}
+.stho-ok {font-size:.77rem;color:#77ddbd;padding-top:6px;line-height:1.6;}
+.stho-muted {font-size:.78rem;color:#9aaabe;line-height:1.5;}
+@media(max-width:680px){.block-container{padding-left:1rem;padding-right:1rem;}.stho-statgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.stho-kpi strong{font-size:1.1rem}.stho-stat{padding:7px 8px;}}
+</style>''', unsafe_allow_html=True)
 
 
-def clean_tickers(text: str) -> list[str]:
-    return list(dict.fromkeys(
-        token for token in re.split(r"[\s,]+", text.upper())
-        if re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,9}", token)
-    ))[:25]
+def esc(obj) -> str:
+    return html.escape(str(obj), quote=True)
 
 
-@st.cache_data(ttl=1200, show_spinner=False)
-def history(symbol: str) -> pd.DataFrame:
-    frame = yf.Ticker(symbol).history(period="2y", interval="1d", auto_adjust=True, actions=False)
-    if frame.empty:
-        raise ValueError("No historical prices returned")
-    return frame
-
-
-@st.cache_data(ttl=600, show_spinner=False)
-def snapshot(data_mtime: int, status_mtime: int) -> tuple[pd.DataFrame, dict]:
-    frame = pd.read_csv(RESULTS_FILE)
-    state = json.loads(STATUS_FILE.read_text(encoding="utf-8"))
-    for col in METRIC_FIELDS:
-        if col in frame.columns:
-            frame[col] = pd.to_numeric(frame[col], errors="coerce")
-    # Recent means recent checked row AND recent daily bar; it is not a live quote.
-    now = pd.Timestamp.now(tz="UTC")
-    bars = pd.to_datetime(frame["Date"], utc=True, errors="coerce")
-    checked = pd.to_datetime(frame["Scanned at UTC"], utc=True, errors="coerce")
-    bar_days = (now - bars).dt.total_seconds() / 86400
-    scan_days = (now - checked).dt.total_seconds() / 86400
-    frame["Recent"] = (bar_days.between(-1, 5) & scan_days.between(-1, 5)).fillna(False)
-    return frame, state
-
-
-def rules_for(row: dict) -> dict[str, bool]:
-    if isinstance(row.get("Rule details"), dict):
-        return row["Rule details"]
-    raw = row.get("Rules JSON", "{}")
+def number(value, digits=2, prefix="", suffix="") -> str:
     try:
-        parsed = json.loads(raw) if isinstance(raw, str) else {}
-        return {str(k): bool(v) for k, v in parsed.items()} if isinstance(parsed, dict) else {}
+        n = float(value)
+        return f"{prefix}{n:,.{digits}f}{suffix}" if pd.notna(n) else "—"
     except (TypeError, ValueError):
-        return {}
-
-
-def score_of(row: dict) -> int:
-    try:
-        score = int(float(row.get("Score", -1)))
-        return score if 0 <= score <= 9 else -1
-    except (ValueError, TypeError, OverflowError):
-        return -1
-
-
-def fmt(row: dict, key: str, suffix: str = "", prefix: str = "") -> str:
-    try:
-        value = float(row[key])
-        if pd.isna(value):
-            return "—"
-        return f"{prefix}{value:,.2f}{suffix}"
-    except (TypeError, ValueError, KeyError):
         return "—"
 
 
-def esc(text: object) -> str:
-    return html.escape(str(text), quote=True)
+def clean_tickers(raw: str) -> list[str]:
+    return list(dict.fromkeys(
+        t for t in re.split(r"[,\s]+", raw.upper()) if re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,9}", t)
+    ))[:25]
 
 
-def short_name(raw: object) -> str:
-    """Make exchange-provided legal security descriptions easier to scan on phones."""
-    name = str(raw or "")
-    name = re.sub(r"\s+-\s+(?:(?:Class [A-Z] )?Common Stock|Ordinary Shares)(?:.*)?$", "", name, flags=re.IGNORECASE)
-    name = re.sub(r"\s+(?:Class [A-Z] )?Common Stock(?:.*)?$", "", name, flags=re.IGNORECASE)
-    return name.strip() or str(raw or "—")
+@st.cache_data(ttl=900, show_spinner=False)
+def history(ticker: str) -> pd.DataFrame:
+    df = yf.Ticker(ticker).history(period="2y", interval="1d", auto_adjust=True, actions=False)
+    if df.empty:
+        raise ValueError("Price history not available")
+    return df
 
 
-def failed_conditions(row: dict, rules: dict[str, bool]) -> list[str]:
-    """Report an UNMET target with the actual reading, never a bare 'X > Y'."""
-    descriptions = {
-        "Price > EMA50": "Close below/equal EMA50",
-        "Price > EMA200": "Close below/equal EMA200",
-        "EMA10 > EMA21": "EMA10 below/equal EMA21",
-        "ADR20 > 5%": f"ADR {fmt(row, 'ADR20 (%)', suffix='%')} (target >5%)",
-        "Price > $1": f"Price {fmt(row, 'Close ($)', prefix='$')} (target >$1)",
-        "1M return > 30%": f"1M {fmt(row, '1M (%)', suffix='%')} (target >30%)",
-        "3M return > 30%": f"3M {fmt(row, '3M (%)', suffix='%')} (target >30%)",
-        "6M return > 30%": f"6M {fmt(row, '6M (%)', suffix='%')} (target >30%)",
-        "ADV60 > $100M": f"ADV {fmt(row, 'ADV60 ($M)', suffix='M', prefix='$')} (target >$100M)",
-    }
-    return [descriptions.get(name, name) for name in RULE_LABELS if rules.get(name) is False]
+@st.cache_data(ttl=180, show_spinner=False)
+def load_data(result_mtime: int, status_mtime: int):
+    data = pd.read_csv(RESULTS_FILE)
+    status = json.loads(STATUS_FILE.read_text(encoding="utf-8"))
+    if "Reversal Stage" not in data.columns:
+        return data, status, False
+    for field in ["Close ($)", "ADR20 (%)", "ADV60 ($M)", "Reversal Score", "RVOL20", "RR Proxy", "Pivot ($)", "Stop Ref ($)", "Target Ref ($)", "Below EMA200 Days (60)"]:
+        if field in data.columns:
+            data[field] = pd.to_numeric(data[field], errors="coerce")
+    now = pd.Timestamp.now(tz="UTC")
+    last_bar = pd.to_datetime(data["Date"], utc=True, errors="coerce")
+    last_scan = pd.to_datetime(data["Scanned at UTC"], utc=True, errors="coerce")
+    data["Recent"] = (((now - last_bar).dt.total_seconds() / 86400).between(-1, 4) &
+                       ((now - last_scan).dt.total_seconds() / 86400).between(-1, 4)).fillna(False)
+    data["Reversal Stage"] = data["Reversal Stage"].fillna("No setup")
+    return data, status, True
 
 
-def small_kpis(pairs: list[tuple[str, str]]) -> None:
-    contents = "".join(
-        f'<div class="stho-kpi"><div class="stho-num">{esc(value)}</div><div class="stho-label">{esc(label)}</div></div>'
-        for label, value in pairs
-    )
-    st.markdown(f'<div class="stho-grid">{contents}</div>', unsafe_allow_html=True)
+@st.cache_data(ttl=180, show_spinner=False)
+def load_reviews(mtime: int):
+    return read_reviews(SHARIAH_FILE)
 
 
-def set_details(symbol: str, row: dict) -> None:
-    # Callback runs before Streamlit reconstructs the nav widget on next rerun.
-    st.session_state["detail_symbol"] = symbol
-    st.session_state["detail_row"] = dict(row)
-    st.session_state["nav_radio"] = "Deep Dive"
+def registry():
+    try:
+        return load_reviews(SHARIAH_FILE.stat().st_mtime_ns if SHARIAH_FILE.exists() else 0)
+    except Exception as e:
+        st.error(f"Manual registry invalid. Fail-closed: no Shariah clearance. {type(e).__name__}: {e}")
+        return {}
+
+
+def last_snapshot():
+    if not RESULTS_FILE.exists() or not STATUS_FILE.exists():
+        st.info("No market snapshots yet. Run GitHub Actions → US Market Momentum Scan.")
+        return None
+    try:
+        snapshot = load_data(RESULTS_FILE.stat().st_mtime_ns, STATUS_FILE.stat().st_mtime_ns)
+        if not snapshot[2]:
+            st.warning("V4 technical results not generated yet. Run a NEW GitHub Actions scan after uploading scan_market.py and reversal.py.")
+            return None
+        return snapshot[0], snapshot[1]
+    except Exception as exc:
+        st.error(f"Could not load scan snapshot: {type(exc).__name__}: {exc}")
+        return None
+
+
+def review_label(gate: dict) -> str:
+    return {"MANUALLY_REVIEWED": "Manual source review recorded", "BLOCKED": "Source status not compliant",
+            "EXPIRED": "Manual review expired", "UNVERIFIED": "Syariah unverified"}.get(gate["gate"], "Syariah unverified")
+
+
+def set_detail(row: dict):
+    st.session_state["detail_row"] = row
+    st.session_state["page"] = "Deep Dive"
     st.session_state["chart_symbol"] = ""
 
 
-def stock_card(row: dict, uid: str) -> None:
-    sym = str(row.get("Ticker", "—"))
-    score = score_of(row)
-    rules = rules_for(row)
-    failed = failed_conditions(row, rules)
-    try:
-        liquid = float(row.get("ADV60 ($M)", 0)) >= 100
-    except (TypeError, ValueError):
-        liquid = False
-    name = short_name(row.get("Name", sym))
-    if len(name) > 49:
-        name = name[:46].rstrip() + "…"
-    if rules and not failed:
-        note = '<div class="stho-success">✓ All 9 momentum rules passed</div>'
-    elif failed:
-        labels = " · ".join(failed[:2])
-        note = f'<div class="stho-flag"><strong>NOT MET:</strong> {esc(labels)}</div>'
-    else:
-        note = '<div class="stho-flag">Rule details unavailable — open Deep Dive to recheck</div>'
-    if not liquid and not any("ADV " in reason for reason in failed):
-        note += '<div class="stho-flag">⚠ Below $100M average daily dollar volume</div>'
-    content = f'''<div class="stho-stock-head">
-      <div><div class="stho-ticker">{esc(sym)}</div><div class="stho-company">{esc(name)}</div>
-      <div class="stho-card-meta">Close date {esc(row.get('Date', '—'))}</div></div>
-      <div class="stho-score{'' if score >= 7 else ' low'}">{score if score >= 0 else '—'}/9<small>Momentum</small></div>
-    </div><div class="stho-stats">
-      <div class="stho-stat"><strong>{esc(fmt(row, 'Close ($)', prefix='$'))}</strong><span>Last close</span></div>
-      <div class="stho-stat"><strong>{esc(fmt(row, '1M (%)', suffix='%'))}</strong><span>1M return</span></div>
-      <div class="stho-stat"><strong>{esc(fmt(row, 'ADR20 (%)', suffix='%'))}</strong><span>ADR20</span></div>
-      <div class="stho-stat"><strong>{esc(fmt(row, 'ADV60 ($M)', suffix='M', prefix='$'))}</strong><span>ADV60</span></div>
-    </div>{note}'''
+def card(row: dict, reg: dict, key: str):
+    sym = str(row.get("Ticker", ""))
+    gate = review_status(sym, reg)
+    stage = str(row.get("Reversal Stage") or "No setup")
+    name = re.sub(r"\s+-\s+(?:Class [A-Z] )?Common Stock.*$", "", str(row.get("Name", sym)), flags=re.I)[:64]
+    tag_class = "stho-ok" if gate["gate"] == "MANUALLY_REVIEWED" else "stho-warn"
+    details = f'''<div class="stho-card"><div><div class="stho-ticker">{esc(sym)}</div><div class="stho-name">{esc(name)}</div></div>
+      <div class="stho-stage">{esc(stage)}<div class="stho-muted">{esc(number(row.get('Reversal Score'),0))}/10 signals</div></div></div>
+    <div class="stho-statgrid">
+      <div class="stho-stat"><b>{esc(number(row.get('Close ($)'),prefix='$'))}</b><span>Close</span></div>
+      <div class="stho-stat"><b>{esc(number(row.get('RVOL20'),suffix='×'))}</b><span>RVOL</span></div>
+      <div class="stho-stat"><b>{esc(number(row.get('RR Proxy'),suffix='×'))}</b><span>R:R proxy</span></div>
+      <div class="stho-stat"><b>{esc(number(row.get('ADV60 ($M)'),prefix='$',suffix='M'))}</b><span>ADV60</span></div>
+    </div><div class="{tag_class}">{esc(review_label(gate))} · {esc(gate['why'])}</div>'''
     with st.container(border=True):
-        st.markdown(content, unsafe_allow_html=True)
-        st.button("Deep Dive  ↗", key=f"card_{uid}_{sym}", on_click=set_details,
-                  args=(sym, row), use_container_width=True)
+        st.markdown(details, unsafe_allow_html=True)
+        st.button("Open Deep Dive ↗", key=f"open_{key}_{sym}", on_click=set_detail, args=(row,), use_container_width=True)
 
 
-def get_market() -> tuple[pd.DataFrame, dict] | None:
-    if not RESULTS_FILE.exists() or not STATUS_FILE.exists():
-        st.info("First run needed: GitHub → Actions → US Market Momentum Scan → Run workflow. Data will appear after the first successful scan.")
-        return None
-    try:
-        return snapshot(RESULTS_FILE.stat().st_mtime_ns, STATUS_FILE.stat().st_mtime_ns)
-    except (OSError, ValueError, KeyError, pd.errors.ParserError) as exc:
-        st.error(f"Could not read market snapshot: {type(exc).__name__}: {exc}")
-        return None
+def kpis(items):
+    insides = "".join(f'<div class="stho-kpi"><strong>{esc(v)}</strong><span>{esc(k)}</span></div>' for k, v in items)
+    st.markdown(f'<div class="stho-kpis">{insides}</div>', unsafe_allow_html=True)
 
 
-def discover(market: tuple[pd.DataFrame, dict] | None) -> None:
-    if market is None:
+def discover(reg: dict):
+    result = last_snapshot()
+    if result is None:
         return
-    frame, state = market
+    df, state = result
     total = int(state.get("universe_count", 0))
-    count = int(state.get("ever_scanned", len(frame)))
-    recent = int(frame["Recent"].sum())
-    coverage = 100 * count / total if total else 0
-    st.markdown(
-        f'<div class="stho-marketline"><b>{recent:,} recent rows</b> · {count:,}/{total:,} ever scanned · {coverage:.1f}% historical coverage</div>',
-        unsafe_allow_html=True,
-    )
-    with st.expander("Coverage & data status"):
-        small_kpis([("Universe", f"{total:,}"), ("Ever scanned", f"{count:,}"), ("Recent rows", f"{recent:,}")])
-        st.progress(min(1.0, count / total) if total else 0.0)
-        st.caption(f"Last run {str(state.get('last_run_utc', 'unknown'))[:16]} UTC · Partial US market scan")
-        st.caption("Coverage counts historically checked symbols; it does not mean all stocks are current.")
-
-    st.markdown('<div class="stho-section">Discover candidates</div>', unsafe_allow_html=True)
-    category = st.radio("Momentum category", RANKS, horizontal=True, label_visibility="collapsed", key="rank_filter")
-    c1, c2 = st.columns(2)
-    with c1:
-        only_liquid = st.checkbox("ADV ≥ $100M", value=True, help="Excludes thinly traded stocks from the main shortlist; scores themselves are unchanged.")
-    with c2:
-        recent_only = st.checkbox("Recent only", value=True, help="Daily bar and scan both within 5 calendar days; still not live data.")
-    with st.expander("More filters"):
-        sort = st.selectbox("Sort by", ["Momentum score", "1M performance", "Dollar volume"], key="market_sort")
-        max_cards = st.slider("Candidates to display", 3, 30, 9, step=3)
-
-    shown = frame.copy()
-    if recent_only:
-        shown = shown[shown["Recent"]]
-    if only_liquid:
-        shown = shown[shown["ADV60 ($M)"] >= 100]
-    if category == "9/9":
-        shown = shown[shown["Score"] == 9]
-    elif category == "7–8/9":
-        shown = shown[shown["Score"].between(7, 8)]
-    elif category == "6/9":
-        shown = shown[shown["Score"] == 6]
-    sort_cols = {"Momentum score": ["Score", "1M (%)"],
-                 "1M performance": ["1M (%)", "Score"],
-                 "Dollar volume": ["ADV60 ($M)", "Score"]}[sort]
-    shown = shown.sort_values(sort_cols, ascending=False, na_position="last")
-    st.caption(f"{len(shown):,} candidates match your filters · Showing up to {max_cards}")
-    if shown.empty:
-        st.markdown('<div class="stho-empty">No matches in the scanned data. Try another category or turn off a filter.</div>', unsafe_allow_html=True)
+    n = int(state.get("ever_scanned", len(df)))
+    valid_technical = df["Reversal Stage"].isin(["Reversal watch", "Breakout review", "Extended"]) & df["Recent"]
+    screened = df[valid_technical].copy()
+    gate_map = {t: review_status(t, reg) for t in screened["Ticker"].astype(str).unique()}
+    screened["Shariah Gate"] = screened["Ticker"].map(lambda t: gate_map[str(t)]["gate"])
+    manually = screened[screened["Shariah Gate"] == "MANUALLY_REVIEWED"]
+    kpis([("Historical coverage", f"{n}/{total}"), ("Recent technical setups", str(len(screened))),
+          ("Manual source reviewed", str(len(manually)))])
+    st.caption(f"Batch run {str(state.get('last_run_utc', '—'))[:16]} UTC · Scans rotate; not a full-market daily feed")
+    with st.expander("Coverage, scan quality & limitations"):
+        st.progress(min(n / total, 1.) if total else 0.)
+        st.write(f"{(100*n/total if total else 0):.1f}% ever scanned; stale history is not included in fresh shortlist.")
+        st.caption(f"Latest batch: {state.get('batch_succeeded','—')}/{state.get('batch_requested','—')} successfully scored; {state.get('batch_failed','—')} failures")
+        st.caption("No earnings-calendar check; confirm earnings and broker prices independently before any trade.")
+    st.subheader("Early Reversal Discover")
+    st.caption("Default: only tickers with valid MANUALLY RECORDED evidence. The app never verifies a source report for you.")
+    include_uncleared = st.checkbox("Show research-only (Shariah not cleared)", value=False,
+                                    help="Shows unverified, expired or blocked as research; these are NOT buy candidates.")
+    stage = st.selectbox("Setup", STAGES, index=0)
+    only_recent = st.checkbox("Recent bars only", value=True)
+    with st.expander("Additional filters"):
+        min_rvol = st.slider("Min relative volume", 0.0, 4.0, 0.0, step=.25)
+        limit = st.slider("Maximum cards", 3, 40, 12, step=1)
+    selected = df.copy()
+    if only_recent:
+        selected = selected[selected["Recent"]]
+    if stage == "All setups":
+        selected = selected[selected["Reversal Stage"].isin(["Breakout review", "Reversal watch", "Extended"])]
     else:
-        for index, row in enumerate(shown.head(max_cards).to_dict("records")):
-            stock_card(row, f"discover_{index}")
+        selected = selected[selected["Reversal Stage"] == stage]
+    selected = selected[pd.to_numeric(selected["RVOL20"], errors="coerce") >= min_rvol]
+    selected["Shariah Gate"] = selected["Ticker"].map(lambda t: review_status(t, reg)["gate"])
+    if not include_uncleared:
+        selected = selected[selected["Shariah Gate"] == "MANUALLY_REVIEWED"]
+    selected = selected.sort_values(["Reversal Score", "RVOL20"], ascending=False, na_position="last")
+    st.caption(f"{len(selected)} result(s) from available data · Not live trade alerts")
+    if not include_uncleared and selected.empty:
+        st.info("No manually cleared matches. This is EXPECTED if data/shariah_reviews.csv is empty. Open Shariah Reviews for the manual evidence checklist.")
+        st.caption(f"Technically interesting fresh rows in scanned subset: {len(screened)} (not Shariah-cleared).")
+    elif selected.empty:
+        st.info("No matches with current filters or data coverage. Try All setups.")
+    for idx, row in enumerate(selected.head(limit).to_dict("records")):
+        card(row, reg, f"discover_{idx}")
+    with st.expander("Technical results table (not a Shariah certification)"):
+        cols = ["Ticker", "Reversal Stage", "Shariah Gate", "Reversal Score", "RVOL20", "Close ($)", "RR Proxy", "Date", "Recent"]
+        st.dataframe(selected[[c for c in cols if c in selected.columns]], hide_index=True, use_container_width=True)
 
-    with st.expander("Advanced: full data table"):
-        columns = ["Ticker", "Date", "Score", "Category", "Close ($)", "1M (%)", "3M (%)", "6M (%)", "ADR20 (%)", "ADV60 ($M)", "Recent"]
-        st.dataframe(shown[[col for col in columns if col in shown.columns]], hide_index=True,
-                     use_container_width=True, height=380)
-    with st.expander("Data quality & scan coverage"):
-        st.write("This is a progressive scan, not a daily full-market scan. Missing stocks have NOT failed the screener. Old scores can become invalid as prices move.")
-        st.write(f"Latest batch: {state.get('batch_succeeded', '—')}/{state.get('batch_requested', '—')} succeeded · {state.get('batch_failed', '—')} failures")
-        st.write(f"Universe source: {state.get('source_status', 'Unknown')}")
-        st.write("Yahoo Finance via yfinance is an unofficial, best-effort source. Confirm current prices and volume with your broker before trading.")
-        for error in state.get("failed_examples", [])[:6]:
-            st.caption(str(error))
 
-
-def my_watchlist() -> None:
-    st.markdown('<div class="stho-section">Your tickers</div>', unsafe_allow_html=True)
-    st.caption("On-demand scan · up to 25 US symbols · current browser session")
-    raw = st.text_area("Tickers separated by commas", value=DEFAULT_TICKERS, key="watch_input", height=80)
-    symbols = clean_tickers(raw)
-    if not symbols:
-        st.warning("Enter at least one valid ticker.")
-        return
-    if st.button("Scan my watchlist", type="primary", use_container_width=True):
-        results, errors = [], []
-        with st.spinner(f"Retrieving {len(symbols)} symbols..."):
-            for symbol in symbols:
+def on_demand(reg: dict):
+    st.subheader("My Watchlist")
+    st.caption("Analyze up to 25 US symbols on demand, including Shariah status from YOUR manual registry.")
+    raw = st.text_area("Tickers (comma separated)", DEFAULT_WATCH, height=70)
+    if st.button("Analyze watchlist", type="primary", use_container_width=True):
+        found, errors = [], []
+        with st.spinner("Downloading completed daily candles..."):
+            for sym in clean_tickers(raw):
                 try:
-                    result = screen_ticker(symbol, history(symbol))
-                    result["Name"] = symbol
-                    results.append(result)
+                    frame = history(sym)
+                    row = screen_ticker(sym, frame)
+                    rev = analyze_reversal(sym, frame)
+                    row.update({k:v for k,v in rev.items() if k != "Reversal Checks"})
+                    row["Reversal Checks JSON"] = json.dumps(rev["Reversal Checks"])
+                    row["Name"] = sym
+                    found.append(row)
                 except Exception as exc:
-                    errors.append(f"{symbol}: {str(exc)[:115]}")
-        st.session_state["watch_results"] = results
+                    errors.append(f"{sym}: {type(exc).__name__}: {str(exc)[:120]}")
+        st.session_state["watch_rows"] = found
         st.session_state["watch_errors"] = errors
-    rows = st.session_state.get("watch_results", [])
-    if not rows:
-        st.info("Tap 'Scan my watchlist' to calculate the latest completed daily-bar momentum scores.")
-        return
-    rows = sorted(rows, key=lambda r: (-score_of(r), -float(r.get("1M (%)", 0))))
-    small_kpis([("9/9", str(sum(score_of(r) == 9 for r in rows))),
-                ("7–8/9", str(sum(7 <= score_of(r) <= 8 for r in rows))),
-                ("6/9", str(sum(score_of(r) == 6 for r in rows)))])
-    for i, row in enumerate(rows):
-        stock_card(row, f"watch_{i}")
-    errors = st.session_state.get("watch_errors", [])
-    if errors:
-        with st.expander(f"{len(errors)} unavailable symbol(s)"):
-            for error in errors:
-                st.caption(error)
+    for i, row in enumerate(st.session_state.get("watch_rows", [])):
+        card(row, reg, f"watch_{i}")
+    for problem in st.session_state.get("watch_errors", []):
+        st.warning(problem)
 
 
-def deep_dive(market: tuple[pd.DataFrame, dict] | None) -> None:
-    st.markdown('<div class="stho-section">Deep Dive</div>', unsafe_allow_html=True)
-    st.caption("Open any candidate from Discover, or look up a ticker directly.")
-    typed = st.text_input("Ticker lookup", placeholder="e.g. BMRN", key="lookup_ticker", max_chars=10)
-    if st.button("Analyze ticker", use_container_width=True):
-        syms = clean_tickers(typed)
-        if len(syms) != 1:
-            st.warning("Enter one valid US ticker.")
+def deep_dive(reg: dict):
+    st.subheader("Deep Dive")
+    text = st.text_input("Research any ticker", placeholder="e.g. BMRN", max_chars=10)
+    if st.button("Load ticker research", use_container_width=True):
+        t = clean_tickers(text)
+        if len(t) != 1:
+            st.warning("Enter exactly one US ticker")
         else:
-            symbol = syms[0]
-            with st.spinner(f"Calculating {symbol}..."):
-                try:
-                    row = screen_ticker(symbol, history(symbol))
-                    row["Name"] = symbol
-                    st.session_state["detail_symbol"] = symbol
-                    st.session_state["detail_row"] = row
-                    st.session_state["chart_symbol"] = ""
-                except Exception as exc:
-                    st.error(f"Unable to analyze {symbol}: {type(exc).__name__}: {str(exc)[:180]}")
-
+            sym = t[0]
+            try:
+                df = history(sym)
+                row = screen_ticker(sym, df)
+                rev = analyze_reversal(sym, df)
+                row.update({k:v for k,v in rev.items() if k != "Reversal Checks"})
+                row["Reversal Checks JSON"] = json.dumps(rev["Reversal Checks"])
+                row["Name"] = sym
+                st.session_state["detail_row"] = row
+                st.session_state["chart_symbol"] = ""
+            except Exception as exc:
+                st.error(f"Could not analyze {sym}: {type(exc).__name__}: {str(exc)[:160]}")
     row = st.session_state.get("detail_row")
-    if row is None and market is not None and not market[0].empty:
-        row = market[0].sort_values(["Score", "1M (%)"], ascending=False).iloc[0].to_dict()
-    if row is None:
-        st.info("Select a candidate from Discover to inspect its score, indicators and chart.")
+    if not row:
+        st.info("Select a stock in Discover or enter its ticker.")
         return
-    symbol = str(row.get("Ticker", ""))
-    score = score_of(row)
-    with st.container(border=True):
-        st.markdown(f'**{esc(symbol)}** · {esc(row.get("Name", symbol))}')
-        small_kpis([("Momentum", f"{score}/9"),
-                    ("Price", fmt(row, "Close ($)", prefix="$")),
-                    ("ADR20", fmt(row, "ADR20 (%)", suffix="%"))])
-        st.caption(f"Last completed bar: {row.get('Date', '—')} · 1M {fmt(row, '1M (%)', suffix='%')} · 3M {fmt(row, '3M (%)', suffix='%')} · 6M {fmt(row, '6M (%)', suffix='%')}")
-
-    rules = rules_for(row)
-    if rules:
-        passed = [name for name, ok in rules.items() if ok]
-        failed = [name for name, ok in rules.items() if not ok]
-        st.markdown("#### What passed / failed")
-        if failed:
-            st.warning("Failed conditions: " + "; ".join(failed))
-        else:
-            st.success("All nine momentum rules passed on the recorded daily bar.")
-        with st.expander(f"Show all {len(rules)} rule checks"):
-            for name in RULE_LABELS:
-                if name in rules:
-                    st.write(("✅ " if rules[name] else "❌ ") + name)
+    sym = str(row["Ticker"])
+    gate = review_status(sym, reg)
+    st.markdown(f"### {esc(sym)} · {esc(row.get('Reversal Stage', 'Unknown'))}")
+    if gate["gate"] != "MANUALLY_REVIEWED":
+        st.error(f"NOT SHARIAH-CLEARED. {gate['why']}. Technical research only; not eligible for buy shortlist.")
     else:
-        st.info("Rule breakdown unavailable for this saved row.")
-
-    st.markdown("#### Price & moving averages")
-    st.caption("Click only when needed to avoid unnecessary Yahoo Finance requests.")
-    if st.button("Load interactive chart", type="primary", use_container_width=True):
-        st.session_state["chart_symbol"] = symbol
-    if st.session_state.get("chart_symbol") == symbol:
+        st.success(f"Manual source review recorded, AAOIFI; checked within {MAX_AGE_DAYS} days. Status NOT independently verified by this app.")
+        if gate.get("evidence"):
+            st.link_button("Open manually cited source", gate["evidence"])
+    kpis([("Close", number(row.get("Close ($)"),prefix="$")), ("RVOL20", number(row.get("RVOL20"),suffix="×")),
+          ("Reference R:R", number(row.get("RR Proxy"),suffix="×"))])
+    st.caption(f"Daily bar {row.get('Date','—')} · Pivot {number(row.get('Pivot ($)'),prefix='$')} · Stop reference {number(row.get('Stop Ref ($)'),prefix='$')} · Overhead reference {number(row.get('Target Ref ($)'),prefix='$')}")
+    st.warning("Pivot, stop and overhead are algorithmic reference levels, NOT guaranteed 1–2 week targets. Earnings dates, gaps, spreads and news NOT checked.")
+    try:
+        checks = json.loads(row.get("Reversal Checks JSON", "{}"))
+    except (TypeError, ValueError):
+        checks = {}
+    with st.expander("All reversal checks", expanded=True):
+        if checks:
+            for k, v in checks.items():
+                st.write(("✅ " if v else "❌ ") + str(k))
+        else:
+            st.caption("Checks not recorded. Run latest scanner or research ticker on demand.")
+    st.subheader("Price & EMAs")
+    if st.button("Load interactive chart", use_container_width=True):
+        st.session_state["chart_symbol"] = sym
+    if st.session_state.get("chart_symbol") == sym:
         try:
-            hist = history(symbol)
-            chart = pd.DataFrame(index=hist.index)
-            chart["Close"] = hist["Close"]
-            for span in (10, 21, 50, 200):
-                chart[f"EMA{span}"] = hist["Close"].ewm(span=span, adjust=False, min_periods=span).mean()
-            st.line_chart(chart.tail(260), use_container_width=True)
-            st.caption("Chart can include an in-progress candle. Scores use the last completed US daily bar.")
+            df = history(sym)
+            plot = pd.DataFrame(index=df.index)
+            plot["Close"] = df["Close"]
+            for period in [10, 21, 50, 200]:
+                plot[f"EMA{period}"] = df["Close"].ewm(span=period, adjust=False, min_periods=period).mean()
+            st.line_chart(plot.tail(190), use_container_width=True)
         except Exception as exc:
-            st.error(f"Chart unavailable: {type(exc).__name__}: {str(exc)[:140]}")
-    with st.expander("Detailed indicators"):
-        for label, key, suffix, prefix in [
-            ("ADR20", "ADR20 (%)", "%", ""), ("ADV60", "ADV60 ($M)", "M", "$"),
-            ("1M return", "1M (%)", "%", ""), ("3M return", "3M (%)", "%", ""),
-            ("6M return", "6M (%)", "%", ""),
-        ]:
-            st.write(f"**{label}:** {fmt(row, key, suffix=suffix, prefix=prefix)}")
+            st.error(f"Chart error: {type(exc).__name__}: {str(exc)[:140]}")
+    with st.expander("Why this is NOT a trade recommendation"):
+        st.write("1. A pattern backtest is required. 2. The OHLCV feed is unofficial. 3. Earnings and catalysts are not checked. 4. Shariah reports are entered manually by the user. 5. The market scanner has only progressive partial coverage.")
 
 
-def about() -> None:
-    st.markdown('<div class="stho-section">How this works</div>', unsafe_allow_html=True)
-    st.write("**The same original nine rules** — no thresholds have been changed by the V3 interface upgrade.")
-    for index, name in enumerate(RULE_LABELS, 1):
-        st.write(f"{index}. {name}")
-    st.write("**Classification:** 9/9 Perfect Momentum; 7–8/9 Near Miss; 6/9 Watch; 0–5/9 Below Watch.")
-    st.info("'ADV ≥ $100M' on Discover is an additional viewing filter, not a change to the nine-rule score. Turn it off to inspect low-liquidity names.")
-    st.write("**Data limitations:** Yahoo historical daily price data is unofficial, may lag, and can be rate-limited. The scanner covers a rotating subset of listed US equities, not every stock on every date. Historical results can become stale. This is research support, not a buy/sell recommendation.")
-    st.write("**Automation:** The existing GitHub Actions scanner and data pipeline are unchanged. V3 changes presentation only.")
+def shariah_reviews(reg: dict):
+    st.subheader("Shariah Reviews — manual only")
+    st.warning("No stock is automatically labelled compliant. Empty or invalid reviews are blocked from the main shortlist.")
+    st.write("Check a stock-specific screening report yourself using a consistent methodology (here: AAOIFI). Record BOTH business and financial screens as PASS, the report's stated status, direct HTTPS evidence link, date, provider and reviewer alias.")
+    st.caption("The app validates that a complete source-linked record was entered; it cannot read the linked report or certify its accuracy.")
+    st.markdown("**Edit:** `data/shariah_reviews.csv` in your GitHub repository → pencil → add a CSV row → Commit changes.")
+    st.code(",".join(COLUMNS), language="text")
+    st.caption(f"Our *operational* evidence recheck interval is {MAX_AGE_DAYS} days, not a religious ruling. Recheck when new financial reports or major business changes arise.")
+    st.write("**Methodology guide:** [Zoya screening explanation](https://help.zoya.finance/en/articles/4189798-how-does-zoya-screen-stocks-for-shariah-compliance). Do not copy a homepage as evidence; use the particular ticker's report, and record your manual inspection.")
+    if not reg:
+        st.info("Registry currently has no reviewed tickers. This is safe and expected initially.")
+        return
+    records = []
+    for ticker in sorted(reg):
+        result = review_status(ticker, reg)
+        records.append({"Ticker":ticker,"Gate":result["gate"],"Reason":result["why"]})
+    st.dataframe(pd.DataFrame(records),hide_index=True,use_container_width=True)
+    st.caption("If multiple rows exist for the same ticker, they are blocked until reconciled. Do not enter personal identity, passwords or API keys in a public repository.")
 
 
-st.markdown('''<div class="stho-head"><div><div class="stho-logo">STHO<span>•</span>Terminal</div>
-    <div class="stho-sub">US momentum · Signal first, details on demand</div></div>
-    <div class="stho-pill">EOD · Research</div></div>''', unsafe_allow_html=True)
-st.session_state.setdefault("nav_radio", "Discover")
-st.session_state.setdefault("rank_filter", "7–8/9")
+def about():
+    st.subheader("STHO V4 — Early Reversal Swing")
+    st.write("**Aim:** locate recent downtrend-to-base / EMA reclaim / volume breakout patterns that may warrant further research for a 1–2-week swing. No guaranteed price predictions.")
+    st.write("**Technical stages:** Reversal watch, Breakout review, Extended, No setup. Breakout review includes risk/reward proxy >=2 and basic liquidity gates. Exact thresholds are experimental, not optimized.")
+    st.write("**Shariah default:** no stock passed. Only manual AAOIFI reviews with business/financial PASS, report-specific HTTPS source, reviewer and recent date enter the shortlist. The app does not verify external report content.")
+    st.write("**Data:** progressive US universe via Nasdaq Trader symbols, unofficial Yahoo Finance historical EOD pricing, rotated GitHub Actions. Does not check earnings, company announcements, corporate actions beyond data feed, or compliance changes.")
+    st.write("**V4 migration:** replace app.py and scan_market.py; add reversal.py, shariah_gate.py and data/shariah_reviews.csv. Keep metrics.py, requirements.txt, workflow and theme. Trigger a NEW scan to calculate reversal fields.")
+
+
+st.markdown('''<div class="stho-head"><div><div class="stho-brand">STHO<span>•</span>Reversal</div>
+<div class="stho-sub">Shariah-first · Early reversal · 1–2 week research</div></div>
+<div class="stho-chip">V4 · EOD</div></div>''', unsafe_allow_html=True)
+st.session_state.setdefault("page", "Discover")
 st.session_state.setdefault("detail_row", None)
 st.session_state.setdefault("chart_symbol", "")
-page = st.selectbox("Navigate", NAV, key="nav_radio", label_visibility="collapsed")
-market = get_market() if page in ("Discover", "Deep Dive") else None
+page = st.selectbox("Navigate", PAGES, key="page", label_visibility="collapsed")
+reviews = registry()
 if page == "Discover":
-    discover(market)
+    discover(reviews)
 elif page == "My Watchlist":
-    my_watchlist()
+    on_demand(reviews)
 elif page == "Deep Dive":
-    deep_dive(market)
+    deep_dive(reviews)
+elif page == "Shariah Reviews":
+    shariah_reviews(reviews)
 else:
     about()
-
 st.divider()
-st.caption("STHO Terminal V3.1 · Daily completed candles · Research only · Not financial advice")
+st.caption("STHO V4 · Research-only EOD snapshots · Manual evidence ≠ independent Shariah certification · Not investment advice")
