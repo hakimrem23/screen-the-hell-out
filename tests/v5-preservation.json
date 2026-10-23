@@ -1,0 +1,33 @@
+{
+  "baseline_commit": "8bf90309058dc043efc94191b341a8ba02926493",
+  "protected_files": {
+    "metrics.py": "e08d001f7271bdad70bb7aece8099a7982e5d4f44ef4267b7486f1057b744593",
+    "reversal.py": "7335c0ff9f2cbcf10df07bf4e43cc6289c0d8b3da3abbfb4c9359d8d120f5afd",
+    "triage.py": "6c2ffa8b463c30b96f0f60bb81491cd1c4ddf9745547e4e83705e8a3fcb2107b",
+    "scan_market.py": "52697ead8ed5889017c946965ed118fcc57c2a86f1695ea84df2b27e6c233512",
+    "shariah_gate.py": "13e012be897c31180bd737f55815d4a497506905d78c761102e46811fc9af9b6",
+    ".github/workflows/market_scan.yml": "637446e9504c77be538c009b3370d6e4f2df395fdbf3e83bb496a44658f0c29a",
+    ".streamlit/config.toml": "ad828acb0bfa5e84e74a1cb32602a98da1fc40ef8153252cd07d495d8415268f",
+    "data/shariah_reviews.csv": "aa8db7d087963e411f4a33b8e32cbf25982d99f9803c629dba9c35d1ad0feb36"
+  },
+  "app_functions": {
+    "escape": "06c71aefcd2fae98279a3d37873c5fa30b96706e1ee50bd77cca0a28e25cffdf",
+    "fmt": "50e0d4a05298a52351a1b69c608f5610fb532ac275064442c4fb243814dd6387",
+    "clean_tickers": "b3707b9326b66b57594d33d49bc258e0b2e6bdd531ab5593ac36375bf1d27826",
+    "short_name": "b02e5658fe71c1a98551dfd4811d2b7549e4b4ce268ae57393839321d4dfe124",
+    "read_market": "fc0aa7706c0f6e98345dcdf02cde8f8f23d9e50c8b3e8953c789a0f8e9642501",
+    "read_registry": "ac03cec18f4918fffe69586eccf03c05ff35b255d54ce99907ad3a37b43be033",
+    "load_price_history": "b928c5ed33167ea48b2565f43a328fd6826f2223695ffb1cd394115a8b2f42a4",
+    "registry": "e8375241a483ebc636543f58d29d5de2d0638ceda8b6da94750f4e4830c6f2ed",
+    "snapshot": "3f4c20441869e36e2401525d650139610fa5c71d7b8eaaf6977fac04d039a7e1",
+    "go_to_detail": "92f93782da021f22b294e6893039614020d2648d221089a524ea4d63603ac7ca",
+    "card": "5ebd53b801bbb46f9a9d03abf7e3ab59bab5235c1e809e9372dab6d9ea01a62b",
+    "kpis": "312a2c707bce7af9c63629b242a2dd804436f6bc37406f9246c844c378d19312",
+    "discoveries": "166795903976c3aee3fa71adcd700b7ec46718e83a3ae249f435642f5d10a88c",
+    "on_demand_ticker": "ec143b5bc5d558850f583a9934d264a869c037a8132cab1bb6abe9df5e5c56c1",
+    "watchlist": "9bda973f741f93e1d6ec94f366fc3bfc0e2d3ebe64dd5065669a473e4f3027bf",
+    "deep_dive": "b445d7cd941538eaf2fe343a2710d2f1d9af169bedbb7487fba5ce766cd9221c",
+    "build_review_csv": "deb2f14076b74d4f966fae9d3c6a9f0b6854f93d26521d4940be358579dd891f",
+    "shariah_center": "2c919c90b67a04dfd6051f9c47a74f119bd891f17a9235001025e237cedfebdd"
+  }
+}

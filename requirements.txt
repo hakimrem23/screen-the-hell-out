@@ -1,4 +1,5 @@
-streamlit>=1.38,<2
+streamlit[auth]>=1.50,<2
 pandas>=2.2,<3
 numpy>=1.26,<3
 yfinance>=0.2.55,<2
+exchange-calendars==4.11.2

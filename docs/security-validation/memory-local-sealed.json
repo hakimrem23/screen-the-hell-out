@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "mode": "LOCAL_MEASUREMENTS_NOT_HOSTED_CAPACITY_CERTIFICATION",
+  "measurements": [
+    {
+      "resident_sessions": 1,
+      "peak_rss_mib": 216.0,
+      "elapsed_seconds": 2.29,
+      "input_kind": "AUTHORIZED_LOCAL_SEALED_RECORDS",
+      "input_bytes_unchanged": true,
+      "scope": "AppTest + imports + XNYS + retained session records + category dataframes + three refreshes + base64 simulation; sequential requests, no HTTP/TLS/OIDC server/browser, no memory cap",
+      "market_requests": 0,
+      "private_payloads_emitted": false,
+      "repeat": 1
+    },
+    {
+      "resident_sessions": 1,
+      "peak_rss_mib": 217.2,
+      "elapsed_seconds": 2.45,
+      "input_kind": "AUTHORIZED_LOCAL_SEALED_RECORDS",
+      "input_bytes_unchanged": true,
+      "scope": "AppTest + imports + XNYS + retained session records + category dataframes + three refreshes + base64 simulation; sequential requests, no HTTP/TLS/OIDC server/browser, no memory cap",
+      "market_requests": 0,
+      "private_payloads_emitted": false,
+      "repeat": 2
+    },
+    {
+      "resident_sessions": 3,
+      "peak_rss_mib": 231.26,
+      "elapsed_seconds": 5.24,
+      "input_kind": "AUTHORIZED_LOCAL_SEALED_RECORDS",
+      "input_bytes_unchanged": true,
+      "scope": "AppTest + imports + XNYS + retained session records + category dataframes + three refreshes + base64 simulation; sequential requests, no HTTP/TLS/OIDC server/browser, no memory cap",
+      "market_requests": 0,
+      "private_payloads_emitted": false,
+      "repeat": 1
+    },
+    {
+      "resident_sessions": 3,
+      "peak_rss_mib": 240.42,
+      "elapsed_seconds": 4.61,
+      "input_kind": "AUTHORIZED_LOCAL_SEALED_RECORDS",
+      "input_bytes_unchanged": true,
+      "scope": "AppTest + imports + XNYS + retained session records + category dataframes + three refreshes + base64 simulation; sequential requests, no HTTP/TLS/OIDC server/browser, no memory cap",
+      "market_requests": 0,
+      "private_payloads_emitted": false,
+      "repeat": 2
+    },
+    {
+      "resident_sessions": 5,
+      "peak_rss_mib": 258.5,
+      "elapsed_seconds": 7.08,
+      "input_kind": "AUTHORIZED_LOCAL_SEALED_RECORDS",
+      "input_bytes_unchanged": true,
+      "scope": "AppTest + imports + XNYS + retained session records + category dataframes + three refreshes + base64 simulation; sequential requests, no HTTP/TLS/OIDC server/browser, no memory cap",
+      "market_requests": 0,
+      "private_payloads_emitted": false,
+      "repeat": 1
+    },
+    {
+      "resident_sessions": 5,
+      "peak_rss_mib": 255.54,
+      "elapsed_seconds": 6.99,
+      "input_kind": "AUTHORIZED_LOCAL_SEALED_RECORDS",
+      "input_bytes_unchanged": true,
+      "scope": "AppTest + imports + XNYS + retained session records + category dataframes + three refreshes + base64 simulation; sequential requests, no HTTP/TLS/OIDC server/browser, no memory cap",
+      "market_requests": 0,
+      "private_payloads_emitted": false,
+      "repeat": 2
+    }
+  ],
+  "linux_peak_rss_units": "MiB (KiB / 1024)",
+  "comparison": {
+    "nominal_binary_tier_mib": [
+      512,
+      2048
+    ],
+    "conservative_decimal_tier_mib": [
+      488.28,
+      1907.35
+    ],
+    "conservative_25_percent_headroom_budget_mib": [
+      366.21,
+      1430.51
+    ],
+    "provider_actual_units_verified": false
+  },
+  "limitations": [
+    "Linux peak process RSS, not full-container memory or cgroup memory.peak",
+    "No server/WebSocket/TLS/OIDC process or parallel fetch burst; platform overhead and network buffers unmeasured",
+    "No hosting purchased or deployed; synthetic measurements do not replace sealed-record measurements"
+  ],
+  "dependency_lock_sha256": "51ef11b67a8901b6057a9c72d98ae249e102904c99171e448493c457b52980ce"
+}
