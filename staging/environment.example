@@ -1,0 +1,15 @@
+# Manual configuration reference; never place actual credentials here.
+STHO_MONTHLY_COMPUTE_USD=7
+STHO_VIEWERS=1
+STHO_STAGING_MODE=synthetic_preview
+# PRIVATE MODE ONLY AFTER SEPARATE OWNER APPROVAL:
+# STHO_STAGING_MODE=private
+# STHO_PRIVATE_APPROVAL=OWNER_APPROVED
+# Secret File: /etc/secrets/staging-secrets.toml
+# Start from .streamlit/secrets.example.toml; one approved email only.
+# Add [auth] redirect_uri=https://STAGING_HOST/oauth2callback
+# cookie_secret=<unique random staging-only secret>
+# client_id=<staging Google OAuth client ID>
+# client_secret=<staging Google OAuth client secret>
+# server_metadata_url=https://accounts.google.com/.well-known/openid-configuration
+# Separate read-only GitHub credential, never production token.

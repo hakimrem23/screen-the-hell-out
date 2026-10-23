@@ -41,3 +41,5 @@ python -B -m tests.run --output /tmp/stho-integration-tests
 ```
 
 Tests use fictional reports and mocked GET transports. They cover complete coordinator-to-UI ingestion, both-track hashes/bindings, freshness/holidays/DST/early closes, credentials/authentication/redirect handling, zero signals, unavailable data, safe text rendering, cache revocation/failed refresh and V5/Shariah preservation. They do not test trading accuracy. [Validation and delivery status](docs/VALIDATION.md).
+
+Manual-only staging: [Render 512 MB / $7 readiness and owner gates](docs/RENDER-STAGING-READINESS.md). No deployment or purchase has been authorized.

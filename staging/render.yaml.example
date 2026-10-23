@@ -1,0 +1,25 @@
+# INERT TEMPLATE. Importing/creating this service incurs cost; owner approval first.
+services:
+  - type: web
+    name: stho-single-viewer-staging
+    runtime: python
+    repo: https://github.com/hakimrem23/screen-the-hell-out
+    branch: feature/v653-streamlit-integration-v1
+    plan: 0.5c-512mb
+    numInstances: 1
+    region: singapore
+    autoDeployTrigger: off
+    healthCheckPath: /_stcore/health
+    buildCommand: pip install -r requirements.txt -r requirements-private.lock
+    startCommand: python staging/launch.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.14
+      - key: STHO_MONTHLY_COMPUTE_USD
+        value: "7"
+      - key: STHO_VIEWERS
+        value: "1"
+      - key: STHO_STAGING_MODE
+        value: synthetic_preview
+previews:
+  generation: off
