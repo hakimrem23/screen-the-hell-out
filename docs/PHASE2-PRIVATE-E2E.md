@@ -1,5 +1,7 @@
 # Private actual-record acceptance plan — not executed
 
+> Historical planning baseline. The code gaps and cost recommendation are updated in [security-hardening readiness](SECURITY-HARDENING-READINESS.md). Hosted verification remains NOT RUN.
+
 This plan is for a separately approved, authenticated staging deployment after the Phase 2 audit's hardening blockers are resolved. It never initiates orders or alters sealed records. The public preview and public CI remain synthetic. Existing contract compatibility checks do not equal a hosted end-to-end pass.
 
 ## Evidence boundary and inputs

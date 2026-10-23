@@ -44,3 +44,6 @@ No shared Streamlit data cache, disk cache, public export or private CI fixture 
 - GitHub rate limits, oversized responses, schema drift, missing files, unavailable calendar or unapproved source changes withhold records. Reads are sequential and bounded, with no aggressive retries. Refreshes may involve several dozen read requests; provision suitable per-token rate limits before multiuser rollout.
 - This task does not enable authentication on an existing public deployment, configure a token, test an actual private browser session, deploy, or grant public disclosure approval. It provides the implementation and explicit gate for owner-controlled setup.
 - V5 registry/technical functions and scheduler remain unchanged. V6.5.3 categories never write back to V5 data or paper journals. No paper trades are created and no performance statistics are inferred.
+
+
+Current identity/session controls, required rotation fields, tested private dependency lock and measured hosting assessment are in [SECURITY-HARDENING-READINESS.md](SECURITY-HARDENING-READINESS.md). The original setup here must be read with that update before any activation.

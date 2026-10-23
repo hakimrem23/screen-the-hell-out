@@ -46,6 +46,9 @@ class IdentitySecurityTests(unittest.TestCase):
             with self.subTest(field=k),self.assertRaises(Unverified):authorize(self.cfg,u,now=self.now)
     def test_multiple_audiences_require_reviewed_client_and_party(self):
         self.u.update(aud=['synthetic-client','other'],azp='synthetic-client');self.assertTrue(authorize(self.cfg,self.u,now=self.now))
+    def test_multiple_audiences_without_authorized_party_denied(self):
+        self.u['aud']=['synthetic-client','other']
+        with self.assertRaises(Unverified):authorize(self.cfg,self.u,now=self.now)
     def test_missing_trust_configuration_denied(self):
         for k in ['oidc_issuer','oidc_client_id','credential_generation','session_generation','auth_not_before_utc']:
             cfg=dict(self.cfg);del cfg[k]
@@ -115,3 +118,14 @@ class SecurityUITests(unittest.TestCase):
         self.u['email']='unauthorized@example.test'
         with patch('v653.ui.settings',return_value=self.cfg),patch('streamlit.user',self.u),patch('v653.ui.load_latest') as fetch:
             at=self.app();self.assertFalse(at.selectbox);fetch.assert_not_called();self.assertTrue(at.button(key='v653_signout'))
+
+    def test_cached_view_disappears_after_identity_expiry(self):
+        with patch('v653.ui.settings',return_value=self.cfg),patch('streamlit.user',self.u),patch('v653.ui.load_latest',return_value=self.p) as fetch:
+            at=self.app();self.assertTrue(at.selectbox);self.u['exp']=1;at.run();self.assertFalse(at.selectbox);self.assertEqual(fetch.call_count,1);self.assertNotIn('v653_private_record',at.session_state)
+    def test_rotation_during_network_read_does_not_cache_result(self):
+        def rotate(*args):self.cfg['github_token']='SYNTHETIC_ROTATED_TOKEN';return self.p
+        with patch('v653.ui.settings',side_effect=lambda *_:dict(self.cfg)),patch('streamlit.user',self.u),patch('v653.ui.load_latest',side_effect=rotate):
+            at=self.app();self.assertFalse(at.selectbox);self.assertNotIn('v653_private_record',at.session_state)
+    def test_signout_failure_clears_data_without_printing_exception(self):
+        with patch('v653.ui.settings',return_value=self.cfg),patch('streamlit.user',self.u),patch('v653.ui.load_latest',return_value=self.p),patch('streamlit.logout',side_effect=RuntimeError('SYNTHETIC_TEST_TOKEN')):
+            at=self.app();at.button(key='v653_signout').click().run();self.assertFalse(at.selectbox);self.assertNotIn('v653_private_record',at.session_state);self.assertNotIn('SYNTHETIC_TEST_TOKEN',' '.join(x.value for x in at.error))

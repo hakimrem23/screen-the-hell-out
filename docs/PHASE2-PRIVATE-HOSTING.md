@@ -1,5 +1,7 @@
 # Integration Phase 2 — private hosting decision and Android runbook
 
+> Historical planning baseline. The code gaps and cost recommendation are updated in [security-hardening readiness](SECURITY-HARDENING-READINESS.md). Hosted verification remains NOT RUN.
+
 Prepared 24 October 2026 (Asia/Kuala_Lumpur). **Planning/audit only: NO-GO for enabling private results today.** No merge, deployment, secret configuration, actual-result exposure or scheduler change is performed. The public V5 and synthetic preview remain unchanged.
 
 ## Recommendation and estimated cost

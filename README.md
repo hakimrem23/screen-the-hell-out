@@ -28,7 +28,7 @@ Technical qualification is separate from unchanged fail-closed manual Shariah ev
 
 ## Private access — disabled until explicitly approved
 
-**Phase 2 audit: NO-GO for activation until session/sign-out hardening and private hosted tests pass.** See the [hosting recommendation and Android runbook](docs/PHASE2-PRIVATE-HOSTING.md) and [actual-record acceptance plan](docs/PHASE2-PRIVATE-E2E.md). No deployment is authorized.
+**Security guards are implemented; private activation remains NO-GO until hosted OIDC, rotation and capped-memory acceptance pass.** See the [security changes, measured memory and Android checklist](docs/SECURITY-HARDENING-READINESS.md). See the [hosting recommendation and Android runbook](docs/PHASE2-PRIVATE-HOSTING.md) and [actual-record acceptance plan](docs/PHASE2-PRIVATE-E2E.md). No deployment is authorized.
 
 An owner must approve **authenticated private disclosure**, configure OIDC authentication and allowlisted verified emails, and add a narrowly scoped server-side GitHub credential. A token alone, a public deployment, an unverified identity, a query parameter or a UI checkbox cannot enable private results.
 

@@ -25,3 +25,8 @@ The earlier GitHub App repository-scope blocker is resolved. The owner added the
 This change is published only on `feature/v653-streamlit-integration-v1` for a draft PR against `main`. Synthetic-only read-only CI runs on that branch/PR. The previous HTTP 403 remains historical context, not a current blocker. Real application-token/OIDC deployment and private disclosure approval remain separate owner actions.
 
 Main, the existing frontend scanner, private engine scheduler, approved executable pin, paper journals and original research remain untouched. Private mode remains disabled; no merge or deployment is authorized or performed.
+
+
+## Security hardening follow-up
+
+The original 65 scenarios are retained. Current local result: **97 passed, 0 failures, 0 errors, 0 skips**, including 32 identity/session security cases. [Current exact receipt](security-validation/summary.json), [test log](security-validation/tests.log) and [security/memory/readiness report](SECURITY-HARDENING-READINESS.md). Hosted OIDC and capped-container acceptance remain NOT RUN.
