@@ -28,6 +28,8 @@ Technical qualification is separate from unchanged fail-closed manual Shariah ev
 
 ## Private access — disabled until explicitly approved
 
+**Phase 2 audit: NO-GO for activation until session/sign-out hardening and private hosted tests pass.** See the [hosting recommendation and Android runbook](docs/PHASE2-PRIVATE-HOSTING.md) and [actual-record acceptance plan](docs/PHASE2-PRIVATE-E2E.md). No deployment is authorized.
+
 An owner must approve **authenticated private disclosure**, configure OIDC authentication and allowlisted verified emails, and add a narrowly scoped server-side GitHub credential. A token alone, a public deployment, an unverified identity, a query parameter or a UI checkbox cannot enable private results.
 
 See [setup and security](docs/V653-INTEGRATION.md) and the placeholder-only [secrets example](.streamlit/secrets.example.toml). Never commit real secrets or put private outputs into public issues, PR descriptions, CI artifacts, screenshots, caches or downloads. Public display of private results is unsupported in V1; it would require a separate owner-approved change.
