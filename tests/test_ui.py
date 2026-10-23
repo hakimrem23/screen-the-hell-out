@@ -62,5 +62,5 @@ class UITests(unittest.TestCase):
     def test_access_revocation_removes_cached_data_before_any_network(self):
         from v653.github_readonly import authorize
         p=preview();p.update(synthetic=False,freshness='STALE',record_status='VERIFIED RECORDS')
-        with patch('v653.ui.settings',return_value=settings()),patch('v653.ui.authorize',side_effect=[authorize(settings(),user()),Unverified('IDENTITY_NOT_AUTHORIZED')]),patch('v653.ui.load_latest',return_value=p) as fetch:
+        with patch('v653.ui.settings',return_value=settings()),patch('v653.ui.authorize',side_effect=[authorize(settings(),user()),authorize(settings(),user()),Unverified('IDENTITY_NOT_AUTHORIZED')]),patch('v653.ui.load_latest',return_value=p) as fetch:
             at=self.v6();at.run();self.assertFalse(at.selectbox);self.assertEqual(fetch.call_count,1);self.assertNotIn('v653_private_record',at.session_state)

@@ -7,6 +7,7 @@ from shariah_gate import review_status
 from .github_readonly import authorize,GitHub,load_latest
 from .preview import preview
 from .records import CATEGORIES,Unverified
+from .session_security import clear_cached,clear_private,enforce_session,RECHECK_SECONDS
 
 
 def settings(st):
@@ -25,6 +26,14 @@ def text(st,label,value):
     st.text(f'{label}: {value if value is not None else "Not available"}')
 
 def render(st,reviews):
+    # Public preview is unchanged and has no periodic/network side effects.
+    if settings(st).get('mode')=='private':
+        @st.fragment(run_every=RECHECK_SECONDS)
+        def private_view():_render(st,reviews)
+        private_view()
+    else:_render(st,reviews)
+
+def _render(st,reviews):
     st.subheader('V6.5.3 Screening')
     st.caption('Automatic end-of-day research · Track A shortlist · Track B stays independent')
     config=settings(st)
@@ -33,17 +42,25 @@ def render(st,reviews):
         st.info('SYNTHETIC PREVIEW · All examples are invented. No private results are loaded.')
         result=preview(qualified=not st.checkbox('Preview a day with zero qualified setups',key='v653_zero_preview'))
     elif config.get('mode')=='private':
-        try:access=authorize(config,getattr(st,'user',None))
+        user=getattr(st,'user',None)
+        if getattr(user,'is_logged_in',False) is True:
+            if st.button('Sign out of private screening',key='v653_signout',use_container_width=True):
+                clear_private(st.session_state)
+                try:st.logout()
+                except Exception:st.error('Sign-out could not complete. Close private tabs and contact the owner.')
+                return
+        try:
+            access=authorize(config,user)
+            identity=enforce_session(st.session_state,access)
         except Exception:
-            st.session_state.pop('v653_private_record',None)
+            clear_cached(st.session_state)
             st.warning('UNVERIFIED · Private results are locked. Approved server configuration and an authenticated allowlisted identity are required.')
-            st.caption('Ask the owner to configure authentication; no credentials belong in browser inputs.')
+            st.caption('Identity may be unauthorized, expired or invalidated by rotation. Sign out and sign in again; contact the owner if still locked. No credentials belong in browser inputs.')
             try:
                 if config.get('owner_approved_private_access') is True and 'auth' in st.secrets and not getattr(getattr(st,'user',None),'is_logged_in',False):
                     if st.button('Sign in for private screening',key='v653_login'):st.login()
             except Exception:st.error('Authentication is unavailable; contact the owner.')
             return
-        identity=(access.source_sha,access.protocol_sha256,access.approval_reference,access.subject)
         cached=st.session_state.get('v653_private_record')
         refresh=st.button('Refresh verified session',key='v653_refresh',use_container_width=True)
         if cached and cached['identity']!=identity:cached=None;st.session_state.pop('v653_private_record',None)
@@ -55,6 +72,13 @@ def render(st,reviews):
             except Exception:
                 st.error('UNVERIFIED · The latest record could not be authenticated. Results are withheld. Check token permissions, approved pins, run logs and sealed evidence on the server.')
                 return # Never print transport exceptions, URLs, tokens or raw private payloads.
+            try:
+                # A network read may outlive identity expiry or a settings update.
+                current=authorize(settings(st),getattr(st,'user',None))
+                current_identity=enforce_session(st.session_state,current)
+                if current_identity!=identity:raise Unverified('ACCESS_CHANGED_DURING_READ')
+            except Exception:
+                clear_cached(st.session_state);st.warning('UNVERIFIED · Identity or credentials changed during retrieval. Results are withheld.');return
             st.session_state['v653_private_record']={'identity':identity,'loaded':time.monotonic(),'result':result}
         else:
             # Recompute calendar freshness on every render, even while data is cached.

@@ -8,6 +8,7 @@ import re
 import urllib.error
 import urllib.parse
 import urllib.request
+from .session_security import claims
 from .records import A_FILES,B_FILES,Unverified,read_json,require,sha40,sha64,latest_ready,verify,sha
 
 REPO='hakimrem23/stho-moomoo-test'
@@ -21,8 +22,12 @@ class Access:
     protocol_sha256:str
     approval_reference:str
     subject:str=field(default="",repr=False)
+    identity_key:str=field(default="",repr=False)
+    credential_key:str=field(default="",repr=False)
+    issued_at:float=field(default=0,repr=False)
+    expires_at:float=field(default=0,repr=False)
 
-def authorize(settings,user):
+def authorize(settings,user,now=None):
     """Read server secrets + Streamlit OIDC identity; never browser arguments.
 
     V1 permits authenticated private disclosure only, including when V5 is public.
@@ -39,7 +44,8 @@ def authorize(settings,user):
     require(all(isinstance(e,str) and '@' in e for e in allowed) and email.casefold() in {e.casefold() for e in allowed},'IDENTITY_NOT_AUTHORIZED')
     token=settings.get('github_token');require(isinstance(token,str) and bool(token.strip()) and '\n' not in token and '\r' not in token,'SERVER_CREDENTIAL_REQUIRED')
     require(sha40(settings.get('approved_source_sha')) and sha64(settings.get('approved_protocol_sha256')),'APPROVED_PINS_REQUIRED')
-    return Access(token,settings['approved_source_sha'],settings['approved_protocol_sha256'],settings['approval_reference'],email.casefold())
+    identity,key,issued,expires=claims(settings,user,now)
+    return Access(token,settings['approved_source_sha'],settings['approved_protocol_sha256'],settings['approval_reference'],email.casefold(),identity,key,issued,expires)
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,req,fp,code,msg,headers,newurl):return None

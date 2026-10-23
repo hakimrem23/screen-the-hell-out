@@ -14,9 +14,11 @@ from v653.records import Unverified,read_json
 class User(dict):is_logged_in=True
 
 def settings():
-    return dict(mode='private',owner_approved_private_access=True,audience='authenticated_private',approval_reference='TEST OWNER APPROVAL',allowed_emails=['reviewer@example.test'],github_token='SYNTHETIC_TEST_TOKEN',approved_source_sha='1'*40,approved_protocol_sha256='2'*64)
+    return dict(mode='private',owner_approved_private_access=True,audience='authenticated_private',approval_reference='TEST OWNER APPROVAL',allowed_emails=['reviewer@example.test'],github_token='SYNTHETIC_TEST_TOKEN',approved_source_sha='1'*40,approved_protocol_sha256='2'*64,oidc_issuer='https://identity.example.test',oidc_client_id='synthetic-client',credential_generation='test-1',session_generation='test-1',auth_not_before_utc='2000-01-01T00:00:00Z')
 
-def user():return User(email='reviewer@example.test',email_verified=True)
+def user():
+    now=datetime.now(timezone.utc).timestamp()
+    return User(email='reviewer@example.test',email_verified=True,iss='https://identity.example.test',aud='synthetic-client',sub='synthetic-user',iat=now-60,exp=now+3600)
 
 class AuthTests(unittest.TestCase):
     def test_explicit_owner_approval_auth_identity_and_token_required(self):
