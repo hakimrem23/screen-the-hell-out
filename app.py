@@ -475,7 +475,7 @@ st.session_state.setdefault("nav_v5", "Discover")
 st.session_state.setdefault("bucket_short_v5", "Watch")
 st.session_state.setdefault("detail_row_v5", None)
 st.session_state.setdefault("plot_ticker_v5", "")
-st.radio("Navigate", ["Discover", "Watchlist", "Deep Dive", "Syariah"],
+st.radio("Navigate", ["Discover", "Watchlist", "Deep Dive", "Syariah", "V6.5.3 Screening"],
          horizontal=True, label_visibility="collapsed", key="nav_v5")
 manual_reviews = registry()
 section = st.session_state["nav_v5"]
@@ -485,6 +485,9 @@ elif section == "Watchlist":
     watchlist(manual_reviews)
 elif section == "Deep Dive":
     deep_dive(manual_reviews)
+elif section == "V6.5.3 Screening":
+    from v653.ui import render as render_v653
+    render_v653(st, manual_reviews)
 else:
     shariah_center(manual_reviews)
 with st.expander("About / data quality / safety"):

@@ -1,0 +1,15 @@
+{
+  "python": "3.12.14",
+  "packages": {
+    "streamlit": "1.66.1",
+    "pandas": "2.3.3",
+    "numpy": "2.5.4",
+    "yfinance": "1.7.0",
+    "exchange-calendars": "4.11.2",
+    "Authlib": "1.9.1"
+  },
+  "private_tokens_configured_for_app": false,
+  "actual_sealed_schema_contract_check": "PASS_VIA_AUTHORIZED_CONNECTOR_READS_ONLY",
+  "private_payloads_in_public_fixtures": false,
+  "live_authenticated_adapter_deployment": "NOT_TESTED"
+}

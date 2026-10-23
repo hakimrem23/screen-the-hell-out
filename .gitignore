@@ -1,0 +1,10 @@
+# Runtime credentials and local-only evidence never belong in this public repo.
+.streamlit/secrets.toml
+.env
+.env.*
+*.pem
+__pycache__/
+*.py[cod]
+.venv/
+test-results/
+private-evidence/
