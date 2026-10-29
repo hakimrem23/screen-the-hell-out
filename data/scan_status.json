@@ -1,20 +1,20 @@
 {
-  "last_run_utc": "2026-10-28T04:05:57+00:00",
+  "last_run_utc": "2026-10-29T04:07:52+00:00",
   "universe_count": 5902,
-  "ever_scanned": 1162,
+  "ever_scanned": 1293,
   "batch_requested": 150,
   "batch_succeeded": 143,
   "batch_failed": 7,
-  "cursor": 1242,
+  "cursor": 1380,
   "source_status": "NASDAQ Trader symbol lists; equity exclusion is best effort",
   "failed_examples": [
-    "RMIX: Insufficient valid daily candles (need at least 201)",
-    "ACAA: Insufficient valid daily candles (need at least 201)",
-    "IVAI: Insufficient valid daily candles (need at least 201)",
-    "PLSM: Insufficient valid daily candles (need at least 201)",
-    "ALMR: Insufficient valid daily candles (need at least 201)",
-    "LTGR: Insufficient valid daily candles (need at least 201)",
-    "EQPT: Insufficient valid daily candles (need at least 201)"
+    "BWIV: Insufficient valid daily candles (need at least 201)",
+    "FRVO: Insufficient valid daily candles (need at least 201)",
+    "MYX: Insufficient valid daily candles (need at least 201)",
+    "PLUN: Insufficient valid daily candles (need at least 201)",
+    "MIAC: Insufficient valid daily candles (need at least 201)",
+    "AIB: Insufficient valid daily candles (need at least 201)",
+    "CITR: Need at least 240 completed daily candles"
   ],
   "note": "Progressive partial coverage; old rows can be stale. Yahoo data unofficial. Shariah status is NEVER inferred by the scanner.",
   "strategy": "STHO_V4_EARLY_REVERSAL_RESEARCH"
