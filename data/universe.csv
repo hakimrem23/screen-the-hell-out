@@ -90,7 +90,6 @@ ADEA,Adeia Inc.  - Common Stock,NASDAQ
 ADGM,"Adagio Medical Holdings, Inc - Common Stock",NASDAQ
 ADI,"Analog Devices, Inc. - Common Stock",NASDAQ
 ADIG,ADI Global Distribution Inc. Common Stock,NYSE
-ADIL,"Adial Pharmaceuticals, Inc - Common Stock",NASDAQ
 ADM,Archer-Daniels-Midland Company Common Stock,NYSE
 ADMA,ADMA Biologics Inc - Common Stock,NASDAQ
 ADNT,Adient plc Ordinary Shares,NYSE
@@ -555,6 +554,7 @@ AZI,Autozi Internet Technology (Global) Ltd. - Class A Ordinary Shares,NASDAQ
 AZIO,"Azio AI Holdings, Inc. - Common stock",NASDAQ
 AZN,AstraZeneca PLC Ordinary Shares,NYSE
 AZO,"AutoZone, Inc. Common Stock",NYSE
+AZR,"Azora Therapeutics, Inc. - Common Stock",NASDAQ
 AZTA,"Azenta, Inc. - Common Stock",NASDAQ
 AZTR,Azitra Inc Common Stock,NYSE American
 AZUL,"Azul S.A. American Depositary Shares, each representing two (2) Common Shares",NYSE
@@ -2146,6 +2146,7 @@ GASS,"StealthGas, Inc. - common stock",NASDAQ
 GATX,GATX Corporation Common Stock,NYSE
 GAU,Galiano Gold Inc.,NYSE American
 GAUZ,Gauzy Ltd. - Ordinary Shares,NASDAQ
+GBC,"Georgia Banking Company, Inc. - Common Stock",NASDAQ
 GBCI,"Glacier Bancorp, Inc. Common Stock",NYSE
 GBFH,GBank Financial Holdings Inc. - Common Stock,NASDAQ
 GBLI,"Global Indemnity Group, LLC - Class A Common Shares",NASDAQ
@@ -3582,7 +3583,7 @@ NAT,Nordic American Tankers Limited Common Stock,NYSE
 NATL,NCR Atleos Corporation Common Stock,NYSE
 NATR,"Nature's Sunshine Products, Inc. - Common Stock",NASDAQ
 NAUT,"Nautilus Biotechnology, Inc. - Common Stock",NASDAQ
-NAVI,Navient Corporation - Common Stock,NASDAQ
+NAVI,"Navient Holdings, Inc. - Common Stock",NASDAQ
 NAVN,"Navan, Inc. - Class A Common Stock",NASDAQ
 NAZ,Nuveen Arizona Quality Municipal Income Fund Common Stock,NYSE
 NB,NioCorp Developments Ltd. - Common Stock,NASDAQ
@@ -4839,7 +4840,7 @@ SLGL,Sol-Gel Technologies Ltd. - Ordinary Shares,NASDAQ
 SLGN,Silgan Holdings Inc. Common Stock,NYSE
 SLI,Standard Lithium Ltd. Common Shares,NYSE American
 SLM,SLM Corporation - Common Stock,NASDAQ
-SLMT,Brera Holdings PLC - Class B Ordinary Shares,NASDAQ
+SLMT,Solmate Infrastructure Public Limited Company - Class B Ordinary Shares,NASDAQ
 SLN,Silence Therapeutics Plc - American Depository Share,NASDAQ
 SLND,"Southland Holdings, Inc. Common Stock",NYSE American
 SLNG,"Stabilis Solutions, Inc. - Common Stock",NASDAQ
